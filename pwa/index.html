@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kirari Shuttle</title>
+    <meta name="description" content="送迎記録アプリ">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Connection Status -->
+    <div id="connection-status" class="status-bar hidden">
+        <span class="material-icons-round">wifi_off</span> オフラインモード (データは保存されています)
+    </div>
+
+    <!-- View: Setup (Facility/Vehicle Selection) -->
+    <section id="view-setup" class="view active">
+        <div class="container center-content">
+            <div class="brand">
+                <h1>Kirari Shuttle</h1>
+                <p>送迎記録を始めましょう</p>
+            </div>
+
+            <div class="card setup-card">
+                <div class="form-group">
+                    <label>事業所</label>
+                    <select id="setup-facility" class="input-lg"></select>
+                </div>
+
+                <div class="form-group">
+                    <label>車両を選択</label>
+                    <div id="vehicle-list" class="vehicle-grid">
+                        <!-- Vehicle buttons injected here -->
+                    </div>
+                    <button id="toggle-all-vehicles" class="btn-text">他事業所の車両を表示</button>
+                </div>
+
+                <div class="form-group">
+                    <label>本日の日付</label>
+                    <input type="date" id="setup-date" class="input-lg">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- View: Main List -->
+    <section id="view-main" class="view hidden">
+        <header class="app-header">
+            <div class="header-left">
+                <button id="btn-back-setup" class="icon-btn"><span class="material-icons-round">arrow_back</span></button>
+                <div class="header-info">
+                    <h2 id="header-title">送迎リスト</h2>
+                    <span id="header-subtitle">2026-02-12 / ハイエース</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="btn-sync" class="icon-btn"><span class="material-icons-round">sync</span></button>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" data-filter="all">全て</button>
+            <button class="tab" data-filter="pickup">迎え</button>
+            <button class="tab" data-filter="dropoff">送り</button>
+            <button class="tab" data-filter="unfinished">未完了</button>
+        </div>
+
+        <main class="content-scroll">
+            <div id="schedule-list" class="schedule-list">
+                <!-- Cards injected here -->
+            </div>
+            <div id="empty-state" class="empty-state hidden">
+                <span class="material-icons-round">check_circle</span>
+                <p>全ての送迎が完了しました</p>
+            </div>
+        </main>
+        
+        <div class="fab-container">
+            <button id="btn-add-adhoc" class="fab"><span class="material-icons-round">add</span></button>
+        </div>
+    </section>
+
+    <!-- Modal: Memo/Detail -->
+    <div id="modal-memo" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>詳細・メモ</h3>
+                <button class="close-modal"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-user-name" class="text-lg font-bold">田中 太郎</p>
+                <div class="status-selector">
+                    <button class="status-btn" data-status="乗車済">乗車</button>
+                    <button class="status-btn" data-status="降車済">降車</button>
+                    <button class="status-btn" data-status="欠席">欠席</button>
+                    <button class="status-btn" data-status="キャンセル">キャンセル</button>
+                </div>
+                <textarea id="modal-note" placeholder="メモを入力..." rows="4"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-save-memo" class="btn-primary">保存</button>
+            </div>
+        </div>
+        <div class="modal-backdrop"></div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-message">保存しました</span>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('SW Registered', reg))
+                .catch(err => console.log('SW Error', err));
+        }
+    </script>
+</body>
+</html>
