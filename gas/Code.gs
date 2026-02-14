@@ -21,6 +21,9 @@ function doGet(e) {
         // 未実装だが将来用
         result = []; 
         break;
+      case 'getUsers':
+        result = getUsers(e.parameter.facilityId);
+        break;
       default:
         return jsonResponse({ error: 'Invalid action' });
     }
@@ -46,6 +49,9 @@ function doPost(e) {
     switch (action) {
       case 'checkIn':
         result = checkIn(data);
+        break;
+      case 'registerSchedule':
+        result = registerSchedule(data);
         break;
       default:
         return jsonResponse({ error: 'Invalid action' });
@@ -112,7 +118,8 @@ function getSchedule(dateString, facilityId) {
       routeOrder: sched['ルート順'],
       status: record ? record['ステータス'] : null,
       recordId: record ? record['記録ID'] : null,
-      actualTime: record ? formatTime(record['実績時刻']) : null,
+      boardTime: record ? formatTime(record['乗車時刻']) : null,
+      alightTime: record ? formatTime(record['降車時刻']) : null,
       note: record ? record['備考'] : null
     };
   });
@@ -129,13 +136,27 @@ function checkIn(payload) {
   const timestamp = new Date(); // サーバー側時刻
   
   if (existingRecord) {
-    SheetHelper.updateData('送迎記録', '予定ID', scheduleId, {
+    const updateData = {
       'ステータス': status,
-      '実績時刻': timestamp,
       '備考': note,
       'ドライバー': driver,
       '車両ID': vehicleId
-    });
+    };
+    
+    // Status specific updates
+    if (status === '乗車済') {
+      updateData['乗車時刻'] = timestamp;
+    } else if (status === '降車済') {
+      updateData['降車時刻'] = timestamp;
+    } else if (status === null) {
+      // Data clear (Reset) -> Keep times? Or clear? 
+      // Usually reset means mistake correction. Let's clear both for simplicity or keep logs.
+      // User says "Reset", implies back to start.
+      updateData['乗車時刻'] = '';
+      updateData['降車時刻'] = '';
+    }
+    
+    SheetHelper.updateData('送迎記録', '予定ID', scheduleId, updateData);
     return { message: 'Updated', recordId: existingRecord['記録ID'] };
   } else {
     // 新規作成時、スケジュール情報が必要。パラメータで渡してもらうか、ここで引くか。
@@ -157,7 +178,9 @@ function checkIn(payload) {
       '氏名': schedule['氏名'],
       '便種別': schedule['便種別'],
       '予定時刻': schedule['予定時刻'],
-      '実績時刻': timestamp,
+      '予定時刻': schedule['予定時刻'],
+      '乗車時刻': (status === '乗車済') ? timestamp : '',
+      '降車時刻': (status === '降車済') ? timestamp : '',
       'ステータス': status,
       'ドライバー': driver || schedule['ドライバー'],
       '車両ID': vehicleId || schedule['車両ID'],
@@ -168,6 +191,46 @@ function checkIn(payload) {
     const newId = SheetHelper.insertData('送迎記録', newRecord, 'R');
     return { message: 'Created', recordId: newId };
   }
+}
+
+function getUsers(facilityId) {
+  const data = SheetHelper.getData('利用者マスタ');
+  const activeUsers = data.filter(d => d['有効']);
+  if (facilityId) {
+    return activeUsers.filter(d => d['事業所ID'] === facilityId);
+  }
+  return activeUsers;
+}
+
+function registerSchedule(payload) {
+  const { date, facilityId, vehicleId, vehicleName, driver, items } = payload;
+  
+  if (!date || !facilityId || !items || !Array.isArray(items)) {
+    throw new Error('Missing required fields for registration');
+  }
+
+  const results = [];
+  items.forEach((item, index) => {
+    // item: { userId, userName, type, time }
+    const newSchedule = {
+      '日付': date,
+      '事業所ID': facilityId,
+      '利用者ID': item.userId,
+      '氏名': item.userName,
+      '便種別': item.type,
+      '予定時刻': item.time,
+      '車両ID': vehicleId,
+      '車両名': vehicleName,
+      'ドライバー': driver,
+      'ルート順': index + 1
+    };
+    
+    // insertData(sheetName, data, prefix)
+    const newId = SheetHelper.insertData('送迎予定', newSchedule, 'S');
+    results.push(newId);
+  });
+
+  return { count: results.length, ids: results };
 }
 
 function formatDate(date) {
