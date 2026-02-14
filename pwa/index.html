@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,17 +9,20 @@
     <meta name="theme-color" content="#4f46e5">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
     <!-- Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <!-- Loading Overlay -->
@@ -58,6 +62,13 @@
                     <label>本日の日付</label>
                     <input type="date" id="setup-date" class="input-lg">
                 </div>
+
+                <div
+                    style="margin-top: 2rem; border-top: 1px solid var(--gray-100); padding-top: 1rem; text-align: center;">
+                    <button id="btn-go-admin" class="btn-text">
+                        <span class="material-icons-round" style="vertical-align: middle;">event_note</span> 予定を一括作成する
+                    </button>
+                </div>
             </div>
         </div>
     </section>
@@ -66,7 +77,8 @@
     <section id="view-main" class="view hidden">
         <header class="app-header">
             <div class="header-left">
-                <button id="btn-back-setup" class="icon-btn"><span class="material-icons-round">arrow_back</span></button>
+                <button id="btn-back-setup" class="icon-btn"><span
+                        class="material-icons-round">arrow_back</span></button>
                 <div class="header-info">
                     <h2 id="header-title">送迎リスト</h2>
                     <span id="header-subtitle">2026-02-12 / ハイエース</span>
@@ -93,7 +105,7 @@
                 <p>全ての送迎が完了しました</p>
             </div>
         </main>
-        
+
         <div class="fab-container">
             <button id="btn-add-adhoc" class="fab"><span class="material-icons-round">add</span></button>
         </div>
@@ -128,6 +140,66 @@
         <span id="toast-message">保存しました</span>
     </div>
 
+    <!-- View: Admin (Schedule Registration) -->
+    <section id="view-admin" class="view hidden">
+        <header class="app-header">
+            <div class="header-left">
+                <button id="btn-admin-back" class="icon-btn"><span
+                        class="material-icons-round">arrow_back</span></button>
+                <div class="header-info">
+                    <h2>予定登録</h2>
+                    <span>一括で送迎予定を作成します</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="content-scroll">
+            <div class="card admin-card">
+                <div class="form-group">
+                    <label>日付</label>
+                    <input type="date" id="admin-date" class="input-lg">
+                </div>
+
+                <div class="form-group">
+                    <label>車両を選択</label>
+                    <select id="admin-vehicle" class="input-lg"></select>
+                </div>
+
+                <div class="form-group">
+                    <label>ドライバー名 (任意)</label>
+                    <input type="text" id="admin-driver" class="input-lg" placeholder="例: 佐藤">
+                </div>
+
+                <div class="flex-row">
+                    <div class="form-group">
+                        <label>便種別</label>
+                        <select id="admin-type" class="input-lg">
+                            <option value="迎え">迎え</option>
+                            <option value="送り">送り</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>予定時刻</label>
+                        <input type="time" id="admin-time" class="input-lg" value="09:00">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>利用者を選択 (複数可)</label>
+                    <div id="admin-user-list" class="user-selection-list">
+                        <!-- User items injected here -->
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-sub);">※選択した利用者全員の予定を同じ条件で作成します。</p>
+                </div>
+
+                <div class="form-actions">
+                    <button id="btn-admin-submit" class="btn-primary">登録を開始する</button>
+                    <button id="btn-admin-cancel" class="btn-secondary">キャンセル</button>
+                </div>
+            </div>
+        </main>
+    </section>
+
     <script src="app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -137,4 +209,5 @@
         }
     </script>
 </body>
+
 </html>
