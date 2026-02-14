@@ -53,11 +53,20 @@ function doPost(e) {
   try {
     let result;
     switch (action) {
+      case 'getFacilities':
+        result = getFacilities();
+        break;
+      case 'getCourses':
+        result = getCourses(data.facilityId);
+        break;
+      case 'getTemplates':
+        result = getTemplates(data.courseId);
+        break;
+      case 'getUsers':
+         result = getUsers(data.facilityId);
+         break;
       case 'checkIn':
         result = checkIn(data);
-        break;
-      case 'registerSchedule':
-        result = registerSchedule(data);
         break;
       case 'registerSchedule':
         result = registerSchedule(data);
