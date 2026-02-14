@@ -6,7 +6,8 @@
   "scripts": {
     "login": "clasp login",
     "push": "clasp push",
-    "deploy": "clasp deploy",
+    "deploy": "clasp deploy --deploymentId AKfycbzundlRwCQs4320XI-jGou3u9SaCsTx9L2HmKl8rKSULYkh9Dx2D1LiruphLVKAvu9h",
+    "deploy:new": "clasp deploy",
     "open": "clasp open"
   },
   "repository": {
