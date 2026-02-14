@@ -1,0 +1,27 @@
+{
+  "name": "shuttle-record-app",
+  "version": "1.0.0",
+  "description": "このアプリは「Google Apps Script (バックエンド)」と「GitHub Pages (フロントエンド)」の2つを組み合わせて動作します。以下の手順でセットアップを行ってください。",
+  "main": "index.js",
+  "scripts": {
+    "login": "clasp login",
+    "push": "clasp push",
+    "deploy": "clasp deploy",
+    "open": "clasp open"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/msaito-flat/shuttle-record-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/msaito-flat/shuttle-record-app/issues"
+  },
+  "homepage": "https://github.com/msaito-flat/shuttle-record-app#readme",
+  "devDependencies": {
+    "@google/clasp": "^3.2.0"
+  }
+}
