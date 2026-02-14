@@ -8,6 +8,7 @@ const Store = {
     data: {
         facilities: [],
         vehicles: [],
+        users: [], // Added for admin
         schedules: [],
         pendingRecords: [] // Unsynced changes
     },
@@ -143,6 +144,20 @@ const DataManager = {
         } finally {
             UI.showLoading(false);
         }
+    },
+
+    async getUsers() {
+        if (navigator.onLine) {
+            try {
+                const users = await API.fetch('getUsers', {
+                    facilityId: Store.status.currentFacility
+                });
+                Store.data.users = users;
+                Store.save();
+            } catch (e) {
+                console.warn('Fetch users failed', e);
+            }
+        }
     }
 };
 
@@ -198,6 +213,11 @@ const UI = {
             Store.status.isOffline = true;
             this.updateConnectionStatus();
         });
+
+        document.getElementById('btn-go-admin').addEventListener('click', () => AdminManager.open());
+        document.getElementById('btn-admin-back').addEventListener('click', () => AdminManager.close());
+        document.getElementById('btn-admin-cancel').addEventListener('click', () => AdminManager.close());
+        document.getElementById('btn-admin-submit').addEventListener('click', () => AdminManager.submit());
 
         this.updateConnectionStatus();
     },
@@ -293,21 +313,34 @@ const UI = {
 
         schedules.forEach(s => {
             const card = document.createElement('div');
-            const isDone = s.status === '乗車済' || s.status === '降車済';
+            const isRiding = s.status === '乗車済';
+            const isDone = s.status === '降車済';
             const isSkip = s.status === '欠席';
             const isCancel = s.status === 'キャンセル';
+            const isUnfinished = !s.status;
 
             let statusClass = '';
+            if (isRiding) statusClass = 'status-riding';
             if (isDone) statusClass = 'status-done';
             if (isSkip) statusClass = 'status-skip';
             if (isCancel) statusClass = 'status-cancel';
+
+            // Determine Icon
+            let actionIcon = 'radio_button_unchecked';
+            if (isRiding) actionIcon = 'directions_car'; // To Alight
+            if (isDone) actionIcon = 'check_circle'; // Done
+
+            // Times display
+            let timeDisplay = s.scheduledTime;
+            if (s.boardTime) timeDisplay += ` <span style="font-size:0.8em; color:var(--primary-color)">IN ${s.boardTime}</span>`;
+            if (s.alightTime) timeDisplay += ` <span style="font-size:0.8em; color:var(--success-color)">OUT ${s.alightTime}</span>`;
 
             card.className = `schedule-card ${statusClass}`;
             card.innerHTML = `
                 <div class="card-content" onclick="UI.openMemo('${s.scheduleId}')"> <!-- Text area opens memo -->
                     <div class="card-time">
                         <span class="material-icons-round" style="font-size:16px">${s.type === '迎え' ? 'directions_car' : 'home'}</span>
-                        ${s.scheduledTime}
+                        ${timeDisplay}
                     </div>
                     <div class="card-name">${s.userName}</div>
                     <div class="card-badges">
@@ -317,7 +350,7 @@ const UI = {
                 </div>
                 <div class="card-action">
                     <button class="check-btn" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">
-                        <span class="material-icons-round">${isDone ? 'check' : 'radio_button_unchecked'}</span>
+                        <span class="material-icons-round">${actionIcon}</span>
                     </button>
                     <button class="memo-btn" onclick="event.stopPropagation(); UI.openMemo('${s.scheduleId}')">
                         <span class="material-icons-round" style="font-size:20px">edit_note</span>
@@ -332,13 +365,13 @@ const UI = {
         const s = Store.data.schedules.find(item => item.scheduleId === id);
         if (!s) return;
 
-        // Toggle logic: Null -> Done -> Null (Simple toggle)
-        // Or cycle? 
-        // Plan: One tap check.
-        // If "迎え", Done = "乗車済". If "送り", Done = "降車済".
-        const doneStatus = s.type === '迎え' ? '乗車済' : '降車済';
+        // Toggle logic: Null -> '乗車済' -> '降車済' -> Null
+        let newStatus = null;
+        if (!s.status) newStatus = '乗車済';
+        else if (s.status === '乗車済') newStatus = '降車済';
+        else if (s.status === '降車済') newStatus = null; // Reset
+        else newStatus = null; // Other statuses reset to null
 
-        const newStatus = s.status === doneStatus ? null : doneStatus;
         this.updateStatus(id, newStatus);
     },
 
@@ -427,6 +460,103 @@ const UI = {
         this.toastTimeout = setTimeout(() => {
             el.classList.add('hidden');
         }, 2000);
+    }
+};
+
+// ADMIN MANAGER
+const AdminManager = {
+    async open() {
+        UI.showLoading(true);
+        await DataManager.getUsers();
+
+        // Setup default values
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('admin-date').value = tomorrow.toISOString().split('T')[0];
+
+        this.renderVehicles();
+        this.renderUsers();
+
+        document.getElementById('view-setup').classList.add('hidden');
+        document.getElementById('view-admin').classList.remove('hidden');
+        UI.showLoading(false);
+    },
+
+    close() {
+        document.getElementById('view-admin').classList.add('hidden');
+        document.getElementById('view-setup').classList.remove('hidden');
+    },
+
+    renderVehicles() {
+        const select = document.getElementById('admin-vehicle');
+        select.innerHTML = '';
+        Store.data.vehicles.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v['車両ID'];
+            opt.textContent = `${v['車両名']} (${v['車種']})`;
+            select.appendChild(opt);
+        });
+    },
+
+    renderUsers() {
+        const container = document.getElementById('admin-user-list');
+        container.innerHTML = '';
+
+        Store.data.users.forEach(u => {
+            const div = document.createElement('label');
+            div.className = 'user-item';
+            div.innerHTML = `
+                <input type="checkbox" name="admin-user" value="${u['利用者ID']}" data-name="${u['氏名']}">
+                <div class="user-info">
+                    <span class="user-name">${u['氏名']}</span>
+                    <span class="user-sub">${u['フリガナ']} | ${u['備考'] || ''}</span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    },
+
+    async submit() {
+        const date = document.getElementById('admin-date').value;
+        const vehicleId = document.getElementById('admin-vehicle').value;
+        const driver = document.getElementById('admin-driver').value;
+        const type = document.getElementById('admin-type').value;
+        const time = document.getElementById('admin-time').value;
+
+        const selectedCheckboxes = document.querySelectorAll('input[name="admin-user"]:checked');
+        if (selectedCheckboxes.length === 0) {
+            UI.toast('利用者を選択してください');
+            return;
+        }
+
+        const v = Store.data.vehicles.find(v => v['車両ID'] === vehicleId);
+        const vehicleName = v ? v['車両名'] : '';
+
+        const items = Array.from(selectedCheckboxes).map(cb => ({
+            userId: cb.value,
+            userName: cb.dataset.name,
+            type: type,
+            time: time
+        }));
+
+        UI.showLoading(true);
+        try {
+            await API.post('registerSchedule', {
+                date,
+                facilityId: Store.status.currentFacility,
+                vehicleId,
+                vehicleName,
+                driver,
+                items
+            });
+            UI.toast('登録が完了しました');
+            this.close();
+        } catch (e) {
+            console.error('Registration failed', e);
+            UI.toast('エラー: ' + e.message);
+        } finally {
+            UI.showLoading(false);
+        }
     }
 };
 
