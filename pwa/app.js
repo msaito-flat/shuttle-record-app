@@ -290,15 +290,22 @@ const UI = {
     },
 
     renderCourses() {
-        const container = document.getElementById('course-list'); // Changed ID in HTML (Need to update HTML)
+        const container = document.getElementById('course-list');
         if (!container) return;
         container.innerHTML = '';
 
         const facilityId = Store.status.currentFacility;
         let courses = Store.data.courses || [];
 
+        console.log('Rendering courses for facility:', facilityId, 'Available courses:', courses);
+
         if (facilityId) {
             courses = courses.filter(c => c['事業所ID'] === facilityId);
+        }
+
+        if (courses.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-sub); text-align:center;">コースがありません。<br>管理者に確認してください。</p>';
+            return;
         }
 
         courses.forEach(c => {
@@ -309,8 +316,7 @@ const UI = {
                 Store.status.currentCourse = c['コースID'];
                 Store.save();
                 this.renderCourses();
-                DataManager.getTemplates(); // Backround fetch
-                // Auto start logic if user wants to proceed
+                DataManager.getTemplates();
                 this.startSession();
             };
             container.appendChild(btn);
@@ -779,4 +785,5 @@ const AdminManager = {
 window.addEventListener('DOMContentLoaded', () => {
     DataManager.init();
     UI.init();
+    AdminManager.init(); // Added
 });
