@@ -1,7 +1,7 @@
 // app.js
 
 // CONFIGURATION
-const API_URL = 'https://script.google.com/macros/s/AKfycbwFRNP6bPgzmkoVz7I_eqTpQyZAciX-iZkM1MQN1xzt7GNzNt15jdTucfZqo-MiWv4-/exec'; // デプロイ後に書き換えてください
+const API_URL = 'https://script.google.com/macros/s/AKfycbxsWNdZjk4HOjBpwY9yYjt3Qow32JlfAzBS_3xd7L6RWEMQIznXTqUcRtR8MYHkFbQ/exec'; // デプロイ後に書き換えてください
 
 // STATE MANAGEMENT
 const Store = {
@@ -215,13 +215,13 @@ const UI = {
             this.renderCourses();
         });
 
-        document.getElementById('setup-driver').value = Store.status.currentDriver;
+        document.getElementById('setup-driver').value = Store.status.currentDriver || '';
         document.getElementById('setup-driver').addEventListener('change', (e) => {
             Store.status.currentDriver = e.target.value;
             localStorage.setItem('ks_driver', Store.status.currentDriver);
         });
 
-        document.getElementById('setup-attendant').value = Store.status.currentAttendant;
+        document.getElementById('setup-attendant').value = Store.status.currentAttendant || '';
         document.getElementById('setup-attendant').addEventListener('change', (e) => {
             Store.status.currentAttendant = e.target.value;
             localStorage.setItem('ks_attendant', Store.status.currentAttendant);
