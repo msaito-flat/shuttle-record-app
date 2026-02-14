@@ -11,11 +11,17 @@ function doGet(e) {
       case 'getFacilities':
         result = getFacilities();
         break;
+      case 'getCourses':
+        result = getCourses(e.parameter.facilityId);
+        break;
+      case 'getTemplates':
+        result = getTemplates(e.parameter.courseId);
+        break;
       case 'getVehicles':
         result = getVehicles(e.parameter.facilityId);
         break;
       case 'getSchedule':
-        result = getSchedule(e.parameter.date, e.parameter.facilityId);
+        result = getSchedule(e.parameter.date, e.parameter.facilityId, e.parameter.courseId);
         break;
       case 'getRecords':
         // 未実装だが将来用
@@ -53,6 +59,12 @@ function doPost(e) {
       case 'registerSchedule':
         result = registerSchedule(data);
         break;
+      case 'registerSchedule':
+        result = registerSchedule(data);
+        break;
+      case 'registerScheduleFromTemplate':
+        result = registerScheduleFromTemplate(data);
+        break;
       default:
         return jsonResponse({ error: 'Invalid action' });
     }
@@ -74,6 +86,40 @@ function getFacilities() {
   return data.filter(d => d['有効']);
 }
 
+function getCourses(facilityId) {
+  const data = SheetHelper.getData('コースマスタ');
+  const activeCourses = data.filter(d => d['有効']);
+  if (facilityId) {
+    return activeCourses.filter(d => d['事業所ID'] === facilityId);
+  }
+  return activeCourses;
+}
+
+function getTemplates(courseId) {
+  const templates = SheetHelper.getData('予定テンプレート');
+  const details = SheetHelper.getData('テンプレート詳細');
+  
+  // Join details
+  return templates.map(t => {
+    if (courseId && t['コースID'] !== courseId) return null;
+    
+    // Get details for this template
+    const myDetails = details.filter(d => d['テンプレートID'] === t['テンプレートID']);
+    
+    // Sort details?
+    return {
+       templateId: t['テンプレートID'],
+       templateName: t['テンプレート名'],
+       courseId: t['コースID'],
+       items: myDetails.map(d => ({
+         userId: d['利用者ID'],
+         type: d['便種別'],
+         time: d['デフォルト時刻']
+       }))
+    };
+  }).filter(t => t); // remove nulls
+}
+
 function getVehicles(facilityId) {
   const data = SheetHelper.getData('車両マスタ');
   const activeVehicles = data.filter(d => d['有効']);
@@ -84,7 +130,8 @@ function getVehicles(facilityId) {
   return activeVehicles;
 }
 
-function getSchedule(dateString, facilityId) {
+
+function getSchedule(dateString, facilityId, courseId) {
   const schedules = SheetHelper.getData('送迎予定');
   const records = SheetHelper.getData('送迎記録');
   
@@ -97,7 +144,10 @@ function getSchedule(dateString, facilityId) {
     const isSameDate = sDate === dateString;
     // 事業所指定があればチェック、なければ全て
     const isSameFacility = facilityId ? s['事業所ID'] === facilityId : true;
-    return isSameDate && isSameFacility;
+    // コース指定
+    const isSameCourse = courseId ? s['コースID'] === courseId : true;
+    
+    return isSameDate && isSameFacility && isSameCourse;
   });
 
   const targetRecords = records.filter(r => formatDate(r['日付']) === dateString);
@@ -112,9 +162,11 @@ function getSchedule(dateString, facilityId) {
       userName: sched['氏名'],
       type: sched['便種別'],
       scheduledTime: formatTime(sched['予定時刻']),
+      courseId: sched['コースID'],
       vehicleId: sched['車両ID'],
       vehicleName: sched['車両名'],
       driver: sched['ドライバー'],
+      attendant: sched['添乗員'], // Added
       routeOrder: sched['ルート順'],
       status: record ? record['ステータス'] : null,
       recordId: record ? record['記録ID'] : null,
@@ -126,7 +178,7 @@ function getSchedule(dateString, facilityId) {
 }
 
 function checkIn(payload) {
-  const { scheduleId, status, note, date, facilityId, driver, vehicleId } = payload;
+  const { scheduleId, status, note, date, facilityId, driver, attendant, vehicleId, courseId } = payload;
   
   if (!scheduleId) throw new Error('Schedule ID is required');
 
@@ -140,6 +192,10 @@ function checkIn(payload) {
       'ステータス': status,
       '備考': note,
       'ドライバー': driver,
+      'ステータス': status,
+      '備考': note,
+      'ドライバー': driver,
+      '添乗員': attendant, // Added
       '車両ID': vehicleId
     };
     
@@ -182,7 +238,9 @@ function checkIn(payload) {
       '乗車時刻': (status === '乗車済') ? timestamp : '',
       '降車時刻': (status === '降車済') ? timestamp : '',
       'ステータス': status,
+      'コースID': courseId || schedule['コースID'], // Added
       'ドライバー': driver || schedule['ドライバー'],
+      '添乗員': attendant || schedule['添乗員'], // Added
       '車両ID': vehicleId || schedule['車両ID'],
       '車両名': schedule['車両名'], 
       '備考': note
@@ -218,10 +276,13 @@ function registerSchedule(payload) {
       '利用者ID': item.userId,
       '氏名': item.userName,
       '便種別': item.type,
+      '便種別': item.type,
       '予定時刻': item.time,
+      'コースID': payload.courseId,
       '車両ID': vehicleId,
       '車両名': vehicleName,
       'ドライバー': driver,
+      '添乗員': payload.attendant,
       'ルート順': index + 1
     };
     

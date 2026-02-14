@@ -327,9 +327,17 @@ select.input-lg {
     color: #1e40af;
 }
 
-.badge.type-dropoff {
+.badge.type-dropoff,
+.badge-orange {
+    /* Added badge-orange */
     background: #fce7f3;
     color: #9d174d;
+}
+
+.badge-blue {
+    /* Added badge-blue */
+    background: #dbeafe;
+    color: #1e40af;
 }
 
 .card-action {

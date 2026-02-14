@@ -51,11 +51,18 @@
                 </div>
 
                 <div class="form-group">
-                    <label>車両を選択</label>
-                    <div id="vehicle-list" class="vehicle-grid">
-                        <!-- Vehicle buttons injected here -->
+                    <label>コースを選択</label>
+                    <div id="course-list" class="vehicle-list">
+                        <!-- Courses injected here -->
                     </div>
-                    <button id="toggle-all-vehicles" class="btn-text">他事業所の車両を表示</button>
+                </div>
+
+                <div class="form-group" style="padding-top:1rem; border-top:1px solid #eee">
+                    <label>ドライバー・添乗員 (任意)</label>
+                    <div class="flex-row">
+                        <input type="text" id="setup-driver" class="input-lg" placeholder="ドライバー名">
+                        <input type="text" id="setup-attendant" class="input-lg" placeholder="添乗員名">
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -140,61 +147,64 @@
         <span id="toast-message">保存しました</span>
     </div>
 
-    <!-- View: Admin (Schedule Registration) -->
+    <!-- View: Admin Dashboard -->
     <section id="view-admin" class="view hidden">
         <header class="app-header">
             <div class="header-left">
                 <button id="btn-admin-back" class="icon-btn"><span
                         class="material-icons-round">arrow_back</span></button>
                 <div class="header-info">
-                    <h2>予定登録</h2>
-                    <span>一括で送迎予定を作成します</span>
+                    <h2>管理者ダッシュボード</h2>
+                    <span id="admin-date-display">2026-02-14</span>
                 </div>
+            </div>
+            <div class="header-right">
+                <input type="date" id="admin-dashboard-date" class="date-picker-sm">
             </div>
         </header>
 
+        <div class="tabs">
+            <button class="tab active" data-admin-tab="status">運行状況</button>
+            <button class="tab" data-admin-tab="edit">予定編集</button>
+            <button class="tab" data-admin-tab="template">テンプレート</button>
+        </div>
+
         <main class="content-scroll">
-            <div class="card admin-card">
-                <div class="form-group">
-                    <label>日付</label>
-                    <input type="date" id="admin-date" class="input-lg">
+            <!-- Tab: Status -->
+            <div id="admin-tab-status" class="admin-tab-content">
+                <div id="course-status-list" class="status-list">
+                    <!-- Progress bars injected here -->
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label>車両を選択</label>
-                    <select id="admin-vehicle" class="input-lg"></select>
+            <!-- Tab: Edit -->
+            <div id="admin-tab-edit" class="admin-tab-content hidden">
+                <div class="card">
+                    <h3>本日の予定一覧</h3>
+                    <div id="admin-schedule-list" class="admin-schedule-list">
+                        <!-- Editable items injected here -->
+                    </div>
+                    <button id="btn-add-schedule-adhoc" class="btn-text">+ 予定を追加</button>
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label>ドライバー名 (任意)</label>
-                    <input type="text" id="admin-driver" class="input-lg" placeholder="例: 佐藤">
-                </div>
-
-                <div class="flex-row">
+            <!-- Tab: Template -->
+            <div id="admin-tab-template" class="admin-tab-content hidden">
+                <div class="card">
+                    <h3>テンプレートから一括作成</h3>
                     <div class="form-group">
-                        <label>便種別</label>
-                        <select id="admin-type" class="input-lg">
-                            <option value="迎え">迎え</option>
-                            <option value="送り">送り</option>
-                        </select>
+                        <label>コース</label>
+                        <select id="template-course-select" class="input-lg"></select>
                     </div>
                     <div class="form-group">
-                        <label>予定時刻</label>
-                        <input type="time" id="admin-time" class="input-lg" value="09:00">
+                        <label>テンプレート</label>
+                        <select id="template-select" class="input-lg"></select>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label>利用者を選択 (複数可)</label>
-                    <div id="admin-user-list" class="user-selection-list">
-                        <!-- User items injected here -->
+                    <div class="form-group">
+                        <label>車両割り当て (任意)</label>
+                        <select id="template-vehicle-select" class="input-lg"></select>
                     </div>
-                    <p style="font-size: 0.8rem; color: var(--text-sub);">※選択した利用者全員の予定を同じ条件で作成します。</p>
-                </div>
-
-                <div class="form-actions">
-                    <button id="btn-admin-submit" class="btn-primary">登録を開始する</button>
-                    <button id="btn-admin-cancel" class="btn-secondary">キャンセル</button>
+                    <button id="btn-apply-template" class="btn-primary">この内容で予定を作成</button>
                 </div>
             </div>
         </main>

@@ -6,15 +6,20 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxBvTypedkpwJYLeGhc6CRb
 // STATE MANAGEMENT
 const Store = {
     data: {
+        courses: [], // Added
+        templates: [], // Added
         facilities: [],
         vehicles: [],
-        users: [], // Added for admin
+        users: [],
         schedules: [],
         pendingRecords: [] // Unsynced changes
     },
     status: {
         currentFacility: null,
+        currentCourse: null, // Added
         currentVehicle: null,
+        currentDriver: localStorage.getItem('ks_driver') || '', // Persist
+        currentAttendant: localStorage.getItem('ks_attendant') || '', // Persist
         currentDate: new Date().toISOString().split('T')[0],
         isOffline: !navigator.onLine
     },
@@ -110,17 +115,53 @@ const DataManager = {
 
         if (navigator.onLine) {
             try {
-                const facilities = await API.fetch('getFacilities');
-                Store.data.facilities = facilities;
+                const courses = await API.fetch('getCourses', {
+                    facilityId: Store.status.currentFacility
+                });
+                Store.data.courses = courses;
 
+                // Pre-load templates if course selected
+                if (Store.status.currentCourse) {
+                    await this.getTemplates();
+                }
+
+                // Vehicles are still needed for assignment
                 const vehicles = await API.fetch('getVehicles');
                 Store.data.vehicles = vehicles;
 
                 Store.save();
                 UI.renderFacilities();
-                UI.renderVehicles();
+                UI.renderCourses(); // Changed
             } catch (e) {
                 console.warn('Init fetch failed', e);
+            }
+        }
+    },
+
+    async getCourses() {
+        if (navigator.onLine) {
+            try {
+                const courses = await API.fetch('getCourses', {
+                    facilityId: Store.status.currentFacility
+                });
+                Store.data.courses = courses;
+                Store.save();
+            } catch (e) {
+                console.warn('Fetch courses failed', e);
+            }
+        }
+    },
+
+    async getTemplates() {
+        if (navigator.onLine) { // && Store.status.currentCourse
+            try {
+                const templates = await API.fetch('getTemplates', {
+                    courseId: Store.status.currentCourse
+                });
+                Store.data.templates = templates;
+                Store.save();
+            } catch (e) {
+                console.warn('Fetch templates failed', e);
             }
         }
     },
@@ -131,7 +172,8 @@ const DataManager = {
             if (navigator.onLine) {
                 const schedules = await API.fetch('getSchedule', {
                     date: Store.status.currentDate,
-                    facilityId: Store.status.currentFacility
+                    facilityId: Store.status.currentFacility,
+                    courseId: Store.status.currentCourse // Filter by course
                 });
                 Store.data.schedules = schedules;
                 Store.save();
@@ -170,7 +212,19 @@ const UI = {
         document.getElementById('setup-facility').addEventListener('change', (e) => {
             Store.status.currentFacility = e.target.value;
             Store.save();
-            this.renderVehicles();
+            this.renderCourses();
+        });
+
+        document.getElementById('setup-driver').value = Store.status.currentDriver;
+        document.getElementById('setup-driver').addEventListener('change', (e) => {
+            Store.status.currentDriver = e.target.value;
+            localStorage.setItem('ks_driver', Store.status.currentDriver);
+        });
+
+        document.getElementById('setup-attendant').value = Store.status.currentAttendant;
+        document.getElementById('setup-attendant').addEventListener('change', (e) => {
+            Store.status.currentAttendant = e.target.value;
+            localStorage.setItem('ks_attendant', Store.status.currentAttendant);
         });
 
         document.getElementById('setup-date').value = Store.status.currentDate;
@@ -179,9 +233,7 @@ const UI = {
             Store.save();
         });
 
-        document.getElementById('toggle-all-vehicles').addEventListener('click', () => {
-            this.renderVehicles(true); // Show all
-        });
+        /*/ Removed toggle-all-vehicles logic /*/
 
         document.getElementById('btn-back-setup').addEventListener('click', () => {
             document.getElementById('view-main').classList.add('hidden');
@@ -237,25 +289,27 @@ const UI = {
         });
     },
 
-    renderVehicles(showAll = false) {
-        const container = document.getElementById('vehicle-list');
+    renderCourses() {
+        const container = document.getElementById('course-list'); // Changed ID in HTML (Need to update HTML)
+        if (!container) return;
         container.innerHTML = '';
 
         const facilityId = Store.status.currentFacility;
-        let vehicles = Store.data.vehicles;
+        let courses = Store.data.courses || [];
 
-        if (!showAll && facilityId) {
-            vehicles = vehicles.filter(v => v['事業所ID'] === facilityId);
+        if (facilityId) {
+            courses = courses.filter(c => c['事業所ID'] === facilityId);
         }
 
-        vehicles.forEach(v => {
+        courses.forEach(c => {
             const btn = document.createElement('div');
-            btn.className = `vehicle-btn ${v['車両ID'] === Store.status.currentVehicle ? 'selected' : ''}`;
-            btn.innerHTML = `${v['車両名']}<small>${v['車種']} ${v['ナンバー']}</small>`;
+            btn.className = `vehicle-btn ${c['コースID'] === Store.status.currentCourse ? 'selected' : ''}`;
+            btn.innerHTML = `${c['コース名']}`;
             btn.onclick = () => {
-                Store.status.currentVehicle = v['車両ID'];
+                Store.status.currentCourse = c['コースID'];
                 Store.save();
-                this.renderVehicles(showAll);
+                this.renderCourses();
+                DataManager.getTemplates(); // Backround fetch
                 // Auto start logic if user wants to proceed
                 this.startSession();
             };
@@ -264,14 +318,14 @@ const UI = {
     },
 
     startSession() {
-        if (!Store.status.currentVehicle) return;
+        if (!Store.status.currentCourse) return;
         DataManager.loadSchedule();
 
-        // find vehicle name for header
-        const v = Store.data.vehicles.find(v => v['車両ID'] === Store.status.currentVehicle);
-        const vName = v ? v['車両名'] : '';
+        // find course name for header
+        const c = Store.data.courses.find(c => c['コースID'] === Store.status.currentCourse);
+        const cName = c ? c['コース名'] : '';
 
-        document.getElementById('header-subtitle').textContent = `${Store.status.currentDate} / ${vName}`;
+        document.getElementById('header-subtitle').textContent = `${Store.status.currentDate} / ${cName}`;
         document.getElementById('view-setup').classList.add('hidden');
         document.getElementById('view-main').classList.remove('hidden');
     },
@@ -293,11 +347,10 @@ const UI = {
         // So we should show schedules for the Selected Vehicle.
         // AND schedules with no vehicle?
 
-        const currentVehicle = Store.status.currentVehicle;
+        const currentCourse = Store.status.currentCourse;
         schedules = schedules.filter(s => {
-            // Show if assigned to current vehicle OR (no vehicle assigned AND matching facility)
-            // But getSchedule API already filters by facility.
-            return s.vehicleId === currentVehicle || !s.vehicleId;
+            // Show if assigned to current course
+            return s.courseId === currentCourse;
         });
 
         // Tab filter
@@ -391,8 +444,10 @@ const UI = {
                 note: s.note,
                 date: Store.status.currentDate,
                 facilityId: Store.status.currentFacility,
+                courseId: Store.status.currentCourse, // Added
                 vehicleId: Store.status.currentVehicle,
-                driver: 'Driver' // Should act ask driver name in setup. Fixed for now or add input.
+                driver: Store.status.currentDriver, // Updated
+                attendant: Store.status.currentAttendant // Added
             });
 
             this.toast('保存しました');
@@ -465,100 +520,260 @@ const UI = {
 
 // ADMIN MANAGER
 const AdminManager = {
-    async open() {
-        UI.showLoading(true);
-        await DataManager.getUsers();
+    init() {
+        // Tab switching
+        document.querySelectorAll('.tab[data-admin-tab]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tab = e.target.dataset.adminTab;
+                this.switchTab(tab);
+            });
+        });
 
-        // Setup default values
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        document.getElementById('admin-date').value = tomorrow.toISOString().split('T')[0];
+        // Date picker
+        const dateInput = document.getElementById('admin-dashboard-date');
+        dateInput.value = Store.status.currentDate;
+        dateInput.addEventListener('change', (e) => {
+            Store.status.currentDate = e.target.value;
+            Store.save();
+            document.getElementById('admin-date-display').textContent = Store.status.currentDate;
+            this.refreshData();
+        });
 
-        this.renderVehicles();
-        this.renderUsers();
+        // Template actions
+        document.getElementById('template-course-select').addEventListener('change', (e) => {
+            this.renderTemplateOptions(e.target.value);
+        });
 
-        document.getElementById('view-setup').classList.add('hidden');
-        document.getElementById('view-admin').classList.remove('hidden');
-        UI.showLoading(false);
-    },
+        document.getElementById('btn-apply-template').addEventListener('click', () => {
+            this.applyTemplate();
+        });
 
-    close() {
-        document.getElementById('view-admin').classList.add('hidden');
-        document.getElementById('view-setup').classList.remove('hidden');
-    },
+        // Add Schedule Adhoc
+        document.getElementById('btn-add-schedule-adhoc').addEventListener('click', () => {
+            alert('個別追加機能は未実装です');
+        });
 
-    renderVehicles() {
-        const select = document.getElementById('admin-vehicle');
-        select.innerHTML = '';
-        Store.data.vehicles.forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = v['車両ID'];
-            opt.textContent = `${v['車両名']} (${v['車種']})`;
-            select.appendChild(opt);
+        // Back button
+        document.getElementById('btn-admin-back').addEventListener('click', () => {
+            document.getElementById('view-admin').classList.add('hidden');
+            document.getElementById('view-setup').classList.remove('hidden');
         });
     },
 
-    renderUsers() {
-        const container = document.getElementById('admin-user-list');
+    open() {
+        document.getElementById('view-setup').classList.add('hidden');
+        document.getElementById('view-admin').classList.remove('hidden');
+        document.getElementById('admin-date-display').textContent = Store.status.currentDate;
+        this.refreshData();
+        this.switchTab('status'); // Default tab
+    },
+
+    async refreshData() {
+        // Fetch all schedules for the date (across all courses)
+        UI.showLoading(true);
+        try {
+            await DataManager.loadSchedule(); // Loads into Store.data.schedules
+
+            // Render current tab
+            const activeTab = document.querySelector('.tab[data-admin-tab].active');
+            const tabName = activeTab ? activeTab.dataset.adminTab : 'status';
+
+            if (tabName === 'status') this.renderStatus();
+            if (tabName === 'edit') this.renderEditList();
+        } finally {
+            UI.showLoading(false);
+        }
+    },
+
+    switchTab(tabName) {
+        // UI toggle
+        document.querySelectorAll('.tab[data-admin-tab]').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.tab[data-admin-tab="${tabName}"]`).classList.add('active');
+
+        document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.add('hidden'));
+        document.getElementById(`admin-tab-${tabName}`).classList.remove('hidden');
+
+        if (tabName === 'status') this.renderStatus();
+        if (tabName === 'edit') this.renderEditList();
+        if (tabName === 'template') this.renderTemplateTab();
+    },
+
+    renderStatus() {
+        const container = document.getElementById('course-status-list');
         container.innerHTML = '';
 
-        Store.data.users.forEach(u => {
-            const div = document.createElement('label');
-            div.className = 'user-item';
+        const courses = Store.data.courses || [];
+        const schedules = Store.data.schedules || [];
+
+        courses.forEach(c => {
+            const courseSchedules = schedules.filter(s => s.courseId === c['コースID']);
+            if (courseSchedules.length === 0) return;
+
+            const total = courseSchedules.length;
+            const finished = courseSchedules.filter(s => s.status === '降車済').length;
+            const boarded = courseSchedules.filter(s => s.status === '乗車済').length;
+
+            // Progress calculation
+            const progress = total > 0 ? Math.round((finished / total) * 100) : 0;
+
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.style.marginBottom = '1rem';
             div.innerHTML = `
-                <input type="checkbox" name="admin-user" value="${u['利用者ID']}" data-name="${u['氏名']}">
-                <div class="user-info">
-                    <span class="user-name">${u['氏名']}</span>
-                    <span class="user-sub">${u['フリガナ']} | ${u['備考'] || ''}</span>
+                <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                    <strong>${c['コース名']}</strong>
+                    <span>${finished}/${total} 完了</span>
+                </div>
+                <div style="background:#eee; height:10px; border-radius:5px; overflow:hidden;">
+                    <div style="background:var(--success-color); width:${progress}%; height:100%;"></div>
+                </div>
+                <div style="margin-top:0.5rem; font-size:0.8rem; color:var(--text-sub);">
+                    乗車中: ${boarded}人 / 未着手: ${total - finished - boarded}人
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+        if (container.innerHTML === '') {
+            container.innerHTML = '<p class="text-center" style="padding:2rem;">予定がありません</p>';
+        }
+    },
+
+    renderEditList() {
+        const container = document.getElementById('admin-schedule-list');
+        container.innerHTML = '';
+
+        const schedules = Store.data.schedules || [];
+        if (schedules.length === 0) {
+            container.innerHTML = '<p class="text-center">予定がありません</p>';
+            return;
+        }
+
+        schedules.forEach(s => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.innerHTML = `
+                <div>
+                    <strong>${s.userName}</strong>
+                    <span class="badge ${s.type === '迎え' ? 'badge-blue' : 'badge-orange'}">${s.type}</span>
+                    <span style="margin-left:0.5rem; font-size:0.9rem;">${s.scheduledTime}</span>
+                    <span style="margin-left:0.5rem; font-size:0.8rem; color:#666;">${s.vehicleName || '-'}</span>
+                </div>
+                <div>
+                    <button class="btn-text" style="color:red;" onclick="AdminManager.deleteSchedule('${s.scheduleId}')">削除</button>
                 </div>
             `;
             container.appendChild(div);
         });
     },
 
-    async submit() {
-        const date = document.getElementById('admin-date').value;
-        const vehicleId = document.getElementById('admin-vehicle').value;
-        const driver = document.getElementById('admin-driver').value;
-        const type = document.getElementById('admin-type').value;
-        const time = document.getElementById('admin-time').value;
+    async deleteSchedule(id) {
+        if (!confirm('この予定を削除しますか？')) return;
+        alert('削除機能はバックエンド実装待ちです (Not Implemented)');
+    },
 
-        const selectedCheckboxes = document.querySelectorAll('input[name="admin-user"]:checked');
-        if (selectedCheckboxes.length === 0) {
-            UI.toast('利用者を選択してください');
+    renderTemplateTab() {
+        // Populate courses
+        const courseSelect = document.getElementById('template-course-select');
+        courseSelect.innerHTML = '<option value="">コースを選択</option>';
+        if (Store.data.courses) {
+            Store.data.courses.forEach(c => {
+                const op = document.createElement('option');
+                op.value = c['コースID'];
+                op.textContent = c['コース名'];
+                courseSelect.appendChild(op);
+            });
+        }
+
+        // Vehicle select
+        const vehicleSelect = document.getElementById('template-vehicle-select');
+        vehicleSelect.innerHTML = '<option value="">指定なし</option>';
+        if (Store.data.vehicles) {
+            Store.data.vehicles.forEach(v => {
+                const op = document.createElement('option');
+                op.value = v['車両ID'];
+                op.textContent = v['車両名'];
+                vehicleSelect.appendChild(op);
+            });
+        }
+    },
+
+    async renderTemplateOptions(courseId) {
+        const templateSelect = document.getElementById('template-select');
+        templateSelect.innerHTML = '<option value="">読み込み中...</option>';
+
+        if (!courseId) {
+            templateSelect.innerHTML = '';
             return;
         }
 
-        const v = Store.data.vehicles.find(v => v['車両ID'] === vehicleId);
-        const vehicleName = v ? v['車両名'] : '';
+        try {
+            const templates = await API.fetch('getTemplates', { courseId });
+            templateSelect.innerHTML = '';
 
-        const items = Array.from(selectedCheckboxes).map(cb => ({
-            userId: cb.value,
-            userName: cb.dataset.name,
-            type: type,
-            time: time
-        }));
+            if (templates.length === 0) {
+                const op = document.createElement('option');
+                op.textContent = 'テンプレートがありません';
+                templateSelect.appendChild(op);
+                return;
+            }
+
+            templates.forEach(t => {
+                const op = document.createElement('option');
+                op.value = t.templateId;
+                op.textContent = t.templateName;
+                templateSelect.appendChild(op);
+            });
+        } catch (e) {
+            console.error(e);
+            templateSelect.innerHTML = '<option>エラー</option>';
+        }
+    },
+
+    async applyTemplate() {
+        const courseId = document.getElementById('template-course-select').value;
+        const templateId = document.getElementById('template-select').value;
+        const vehicleId = document.getElementById('template-vehicle-select').value;
+
+        // Find vehicle name if selected
+        let vehicleName = '';
+        if (vehicleId) {
+            const v = Store.data.vehicles.find(veh => veh['車両ID'] === vehicleId);
+            if (v) vehicleName = v['車両名'];
+        }
+
+        const date = Store.status.currentDate;
+
+        if (!courseId || !templateId) {
+            alert('コースとテンプレートを選択してください');
+            return;
+        }
+
+        if (!confirm('このテンプレートで予定を作成しますか？')) return;
 
         UI.showLoading(true);
         try {
-            await API.post('registerSchedule', {
+            const res = await API.fetch('registerScheduleFromTemplate', {
                 date,
                 facilityId: Store.status.currentFacility,
+                courseId,
+                templateId,
                 vehicleId,
                 vehicleName,
-                driver,
-                items
+                driver: '',
+                attendant: ''
             });
-            UI.toast('登録が完了しました');
-            this.close();
+            UI.toast(`${res.count}件の予定を作成しました`);
+            this.refreshData();
+            this.switchTab('edit');
         } catch (e) {
-            console.error('Registration failed', e);
-            UI.toast('エラー: ' + e.message);
+            alert('作成に失敗しました: ' + e.message);
         } finally {
             UI.showLoading(false);
         }
     }
 };
+
 
 // INITIALIZATION
 window.addEventListener('DOMContentLoaded', () => {
