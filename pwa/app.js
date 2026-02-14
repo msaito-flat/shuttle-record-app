@@ -1,7 +1,7 @@
 // app.js
 
 // CONFIGURATION
-const API_URL = 'https://script.google.com/macros/s/AKfycbygLjZh_pBurf7vyWYmQtlII-eXEYt86XGhnmSlQO0KFaHuuB-73Vf5DCKKQKFGdVb3/exec'; // デプロイ後に書き換えてください
+const API_URL = 'https://script.google.com/macros/s/AKfycbzundlRwCQs4320XI-jGou3u9SaCsTx9L2HmKl8rKSULYkh9Dx2D1LiruphLVKAvu9h/exec'; // デプロイ後に書き換えてください
 
 // STATE MANAGEMENT
 const Store = {
