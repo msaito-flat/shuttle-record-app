@@ -74,6 +74,10 @@ function doPost(e) {
       case 'registerScheduleFromTemplate':
         result = registerScheduleFromTemplate(data);
         break;
+      case 'setup':
+        setup();
+        result = { message: 'Database initialized' };
+        break;
       default:
         return jsonResponse({ error: 'Invalid action' });
     }

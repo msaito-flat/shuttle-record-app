@@ -2,7 +2,7 @@
 // Shared logic for Driver App and Admin App
 
 // CONFIGURATION
-const API_URL = 'https://script.google.com/macros/s/AKfycbzundlRwCQs4320XI-jGou3u9SaCsTx9L2HmKl8rKSULYkh9Dx2D1LiruphLVKAvu9h/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwj5ZNC3gTMZzMsjFGatdOfFn6o7GOGSHPfImS1Dcj_BRDTKmunOzsNLTXVBWexMg/exec';
 const APP_VERSION = 'v1.0.8'; // Display Version
 
 // STATE MANAGEMENT
