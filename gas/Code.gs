@@ -334,9 +334,9 @@ function updateSchedule(payload) {
   // We want to update specific fields.
   
   const updateData = {};
-  if (time) updateData['予定時刻'] = time;
-  if (vehicleId) updateData['車両ID'] = vehicleId;
-  if (vehicleName) updateData['車両名'] = vehicleName;
+  if (time !== undefined) updateData['予定時刻'] = time;
+  if (vehicleId !== undefined) updateData['車両ID'] = vehicleId;
+  if (vehicleName !== undefined) updateData['車両名'] = vehicleName;
   
   SheetHelper.updateData('送迎予定', '予定ID', scheduleId, updateData);
   
@@ -446,16 +446,15 @@ function bulkUpdateSchedules(payload) {
       const target = existingRows.find(r => r.id === item.scheduleId);
       processedIds.add(item.scheduleId);
       
-      const rowNum = target.rowIndex;
       // Map updates
       const updateObj = {};
-      if (item.time) updateObj['予定時刻'] = item.time;
-      if (item.type) updateObj['便種別'] = item.type;
-      if (item.vehicleId) updateObj['車両ID'] = item.vehicleId;
-      if (item.vehicleName) updateObj['車両名'] = item.vehicleName;
+      if (item.time !== undefined) updateObj['予定時刻'] = item.time;
+      if (item.type !== undefined) updateObj['便種別'] = item.type;
+      if (item.vehicleId !== undefined) updateObj['車両ID'] = item.vehicleId;
+      if (item.vehicleName !== undefined) updateObj['車両名'] = item.vehicleName;
       if (item.driver !== undefined) updateObj['ドライバー'] = item.driver;
       if (item.attendant !== undefined) updateObj['添乗員'] = item.attendant;
-      if (item.routeOrder) updateObj['ルート順'] = item.routeOrder;
+      if (item.routeOrder !== undefined) updateObj['ルート順'] = item.routeOrder;
       
       // Use SheetHelper.updateData logic but with known row? 
       // SheetHelper.updateData searches by key. We can use it.

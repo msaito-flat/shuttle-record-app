@@ -58,23 +58,33 @@ const SheetHelper = {
   updateData: function(sheetName, keyColumn, keyValue, updateData) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
     const data = sheet.getDataRange().getValues();
+    if (data.length === 0) return false;
+
     const headers = data[0];
     const keyIndex = headers.indexOf(keyColumn);
-    
+
     if (keyIndex === -1) throw new Error('Key column not found: ' + keyColumn);
-    
+
+    const colMap = {};
+    headers.forEach((header, index) => {
+      colMap[header] = index;
+    });
+
     // ヘッダー行を除くデータ行を探索 (1-based index for getRange)
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][keyIndex]) === String(keyValue)) {
         const rowIndex = i + 1; // 行番号
-        
-        // 更新するカラムを特定してセット
+
+        // 既存行をベースに更新対象行を再構築し、1回の setValues で反映
+        const row = data[i].slice();
         Object.keys(updateData).forEach(key => {
-          const colIndex = headers.indexOf(key);
-          if (colIndex !== -1) {
-            sheet.getRange(rowIndex, colIndex + 1).setValue(updateData[key]);
+          const colIndex = colMap[key];
+          if (colIndex !== undefined && updateData[key] !== undefined) {
+            row[colIndex] = updateData[key];
           }
         });
+
+        sheet.getRange(rowIndex, 1, 1, headers.length).setValues([row]);
         return true;
       }
     }
