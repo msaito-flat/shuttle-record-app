@@ -473,28 +473,235 @@ function checkInBatch(payload) {
     throw new Error('records must be an array');
   }
 
+  if (records.length === 0) {
+    return {
+      successCount: 0,
+      failCount: 0,
+      failedDetails: [],
+      partialCommit: true,
+      message: 'No records to process'
+    };
+  }
+
+  const lock = LockService.getDocumentLock();
+  const lockRetryPolicy = {
+    maxRetries: 3,
+    waitMsPerTry: 500
+  };
+
+  let locked = false;
+  for (let attempt = 0; attempt <= lockRetryPolicy.maxRetries; attempt++) {
+    locked = lock.tryLock(lockRetryPolicy.waitMsPerTry);
+    if (locked) break;
+    if (attempt < lockRetryPolicy.maxRetries) {
+      Utilities.sleep(lockRetryPolicy.waitMsPerTry * (attempt + 1));
+    }
+  }
+
+  if (!locked) {
+    return {
+      successCount: 0,
+      failCount: records.length,
+      failedDetails: records.map(record => ({
+        scheduleId: record && record.scheduleId ? record.scheduleId : null,
+        error: 'LOCK_NOT_ACQUIRED: concurrent update in progress'
+      })),
+      partialCommit: true,
+      message: 'Batch skipped due to lock contention. Please retry.'
+    };
+  }
+
+  try {
+    return processCheckInBatchWithBulkWrite_(records);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function processCheckInBatchWithBulkWrite_(records) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const recordSheet = ss.getSheetByName('送迎記録');
+  const scheduleSheet = ss.getSheetByName('送迎予定');
+
+  if (!recordSheet || !scheduleSheet) {
+    throw new Error('Required sheets are missing');
+  }
+
+  const recordData = recordSheet.getDataRange().getValues();
+  const recordHeaders = recordData[0] || [];
+  const recordColMap = createColumnMap_(recordHeaders);
+
+  const scheduleIds = new Set();
+  records.forEach(record => {
+    if (record && record.scheduleId) {
+      scheduleIds.add(String(record.scheduleId));
+    }
+  });
+
+  const scheduleData = scheduleSheet.getDataRange().getValues();
+  const scheduleHeaders = scheduleData[0] || [];
+  const scheduleColMap = createColumnMap_(scheduleHeaders);
+  const scheduleById = new Map();
+  for (let i = 1; i < scheduleData.length; i++) {
+    const row = scheduleData[i];
+    const scheduleId = String(row[scheduleColMap['予定ID']] || '');
+    if (scheduleIds.has(scheduleId)) {
+      scheduleById.set(scheduleId, row);
+    }
+  }
+
+  const existingRecordByScheduleId = new Map();
+  for (let i = 1; i < recordData.length; i++) {
+    const row = recordData[i];
+    existingRecordByScheduleId.set(String(row[recordColMap['予定ID']] || ''), {
+      rowNumber: i + 1,
+      row: row.slice()
+    });
+  }
+
+  const updateRowByNumber = new Map();
+  const appendRows = [];
   let successCount = 0;
   let failCount = 0;
   const failedDetails = [];
 
-  records.forEach(record => {
+  records.forEach(item => {
     try {
-      checkIn(record);
+      const scheduleId = item && item.scheduleId ? String(item.scheduleId) : '';
+      if (!scheduleId) {
+        throw new Error('Schedule ID is required');
+      }
+
+      const timestamp = new Date();
+      const existing = existingRecordByScheduleId.get(scheduleId);
+
+      if (existing) {
+        const updatedRow = buildUpdatedRecordRow_(existing.row, recordColMap, item, timestamp);
+        existing.row = updatedRow;
+        updateRowByNumber.set(existing.rowNumber, updatedRow);
+      } else {
+        const scheduleRow = scheduleById.get(scheduleId);
+        if (!scheduleRow) {
+          throw new Error('Schedule not found: ' + scheduleId);
+        }
+
+        const newRow = buildNewRecordRow_(recordHeaders, recordColMap, scheduleRow, scheduleColMap, item, timestamp);
+        appendRows.push(newRow);
+      }
+
       successCount += 1;
     } catch (err) {
       failCount += 1;
       failedDetails.push({
-        scheduleId: record && record.scheduleId ? record.scheduleId : null,
+        scheduleId: item && item.scheduleId ? item.scheduleId : null,
         error: err.toString()
       });
     }
   });
 
+  writeUpdatedRowsByChunk_(recordSheet, recordHeaders.length, updateRowByNumber);
+
+  if (appendRows.length > 0) {
+    const startRow = recordSheet.getLastRow() + 1;
+    recordSheet.getRange(startRow, 1, appendRows.length, recordHeaders.length).setValues(appendRows);
+  }
+
   return {
     successCount: successCount,
     failCount: failCount,
-    failedDetails: failedDetails
+    failedDetails: failedDetails,
+    partialCommit: true,
+    message: failCount > 0 ? 'Partial success: valid records were committed.' : 'All records committed.'
   };
+}
+
+function createColumnMap_(headers) {
+  const colMap = {};
+  headers.forEach((header, index) => {
+    colMap[header] = index;
+  });
+  return colMap;
+}
+
+function buildUpdatedRecordRow_(baseRow, colMap, item, timestamp) {
+  const row = baseRow.slice();
+  const status = item.status;
+
+  setCellIfDefined_(row, colMap, 'ステータス', status);
+  setCellIfDefined_(row, colMap, '備考', item.note);
+  setCellIfDefined_(row, colMap, 'ドライバー', item.driver);
+  setCellIfDefined_(row, colMap, '添乗員', item.attendant);
+  setCellIfDefined_(row, colMap, '車両ID', item.vehicleId);
+  setCellIfDefined_(row, colMap, 'コースID', item.courseId);
+
+  if (status === '乗車済') {
+    row[colMap['乗車時刻']] = timestamp;
+  } else if (status === '降車済') {
+    row[colMap['降車時刻']] = timestamp;
+  } else if (status === null) {
+    row[colMap['乗車時刻']] = '';
+    row[colMap['降車時刻']] = '';
+  }
+
+  return row;
+}
+
+function buildNewRecordRow_(recordHeaders, recordColMap, scheduleRow, scheduleColMap, item, timestamp) {
+  const row = new Array(recordHeaders.length).fill('');
+  const status = item.status;
+
+  row[recordColMap['記録ID']] = generateRowId_('R');
+  row[recordColMap['予定ID']] = item.scheduleId;
+  row[recordColMap['日付']] = item.date || scheduleRow[scheduleColMap['日付']];
+  row[recordColMap['事業所ID']] = item.facilityId || scheduleRow[scheduleColMap['事業所ID']];
+  row[recordColMap['利用者ID']] = scheduleRow[scheduleColMap['利用者ID']];
+  row[recordColMap['氏名']] = scheduleRow[scheduleColMap['氏名']];
+  row[recordColMap['便種別']] = scheduleRow[scheduleColMap['便種別']];
+  row[recordColMap['予定時刻']] = scheduleRow[scheduleColMap['予定時刻']];
+  row[recordColMap['乗車時刻']] = status === '乗車済' ? timestamp : '';
+  row[recordColMap['降車時刻']] = status === '降車済' ? timestamp : '';
+  row[recordColMap['ステータス']] = status;
+  row[recordColMap['コースID']] = item.courseId || scheduleRow[scheduleColMap['コースID']];
+  row[recordColMap['ドライバー']] = item.driver || scheduleRow[scheduleColMap['ドライバー']];
+  row[recordColMap['添乗員']] = item.attendant || scheduleRow[scheduleColMap['添乗員']];
+  row[recordColMap['車両ID']] = item.vehicleId || scheduleRow[scheduleColMap['車両ID']];
+  row[recordColMap['車両名']] = scheduleRow[scheduleColMap['車両名']];
+  row[recordColMap['備考']] = item.note;
+
+  return row;
+}
+
+function setCellIfDefined_(row, colMap, key, value) {
+  if (value !== undefined && colMap[key] !== undefined) {
+    row[colMap[key]] = value;
+  }
+}
+
+function writeUpdatedRowsByChunk_(sheet, columnCount, rowMap) {
+  if (rowMap.size === 0) return;
+
+  const sortedRowNumbers = Array.from(rowMap.keys()).sort((a, b) => a - b);
+  let chunkStart = sortedRowNumbers[0];
+  let chunkRows = [rowMap.get(chunkStart)];
+  let prev = chunkStart;
+
+  for (let i = 1; i < sortedRowNumbers.length; i++) {
+    const current = sortedRowNumbers[i];
+    if (current === prev + 1) {
+      chunkRows.push(rowMap.get(current));
+    } else {
+      sheet.getRange(chunkStart, 1, chunkRows.length, columnCount).setValues(chunkRows);
+      chunkStart = current;
+      chunkRows = [rowMap.get(current)];
+    }
+    prev = current;
+  }
+
+  sheet.getRange(chunkStart, 1, chunkRows.length, columnCount).setValues(chunkRows);
+}
+
+function generateRowId_(prefix) {
+  return prefix + Utilities.formatDate(new Date(), 'JST', 'yyyyMMddHHmmss') + Math.floor(Math.random() * 100);
 }
 
 function getUsers(facilityId) {
