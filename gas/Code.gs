@@ -68,6 +68,9 @@ function doPost(e) {
       case 'checkIn':
         result = checkIn(data);
         break;
+      case 'checkInBatch':
+        result = checkInBatch(data);
+        break;
       case 'registerSchedule':
         result = registerSchedule(data);
         break;
@@ -268,6 +271,37 @@ function checkIn(payload) {
     const newId = SheetHelper.insertData('送迎記録', newRecord, 'R');
     return { message: 'Created', recordId: newId };
   }
+}
+
+function checkInBatch(payload) {
+  const records = payload && payload.records;
+
+  if (!Array.isArray(records)) {
+    throw new Error('records must be an array');
+  }
+
+  let successCount = 0;
+  let failCount = 0;
+  const failedDetails = [];
+
+  records.forEach(record => {
+    try {
+      checkIn(record);
+      successCount += 1;
+    } catch (err) {
+      failCount += 1;
+      failedDetails.push({
+        scheduleId: record && record.scheduleId ? record.scheduleId : null,
+        error: err.toString()
+      });
+    }
+  });
+
+  return {
+    successCount: successCount,
+    failCount: failCount,
+    failedDetails: failedDetails
+  };
 }
 
 function getUsers(facilityId) {
