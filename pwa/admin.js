@@ -5,12 +5,14 @@
 const DataManager = {
     async init() {
         Store.load();
+        Store.status.isOffline = !navigator.onLine;
+        Store.save();
 
         // Show UI first with cached data for faster first paint
         AdminManager.init();
         AdminManager.open();
 
-        if (!navigator.onLine) {
+        if (Store.status.isOffline) {
             UI.toast('オフラインモード: 最新データではない可能性があります');
             return;
         }
@@ -126,7 +128,11 @@ const UI = {
 
 // ADMIN MANAGER
 const AdminManager = {
+    networkListenersBound: false,
+
     init() {
+        this.bindNetworkListeners();
+
         // Tab switching
         document.querySelectorAll('.tab[data-admin-tab]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -175,6 +181,29 @@ const AdminManager = {
         }
 
         this.initMasterTab();
+    },
+
+    bindNetworkListeners() {
+        if (this.networkListenersBound) return;
+        this.networkListenersBound = true;
+
+        window.addEventListener('online', () => {
+            Store.status.isOffline = false;
+            Store.save();
+
+            const activeTab = document.querySelector('.tab[data-admin-tab].active');
+            if (activeTab && activeTab.dataset.adminTab === 'status') {
+                this.refreshData();
+                return;
+            }
+
+            DataManager.loadSchedule();
+        });
+
+        window.addEventListener('offline', () => {
+            Store.status.isOffline = true;
+            Store.save();
+        });
     },
 
 
