@@ -340,19 +340,37 @@ select.input-lg {
 
 
 .btn-action {
-    min-width: 88px;
-    min-height: 40px;
     border: none;
     border-radius: 10px;
-    padding: 0.4rem 0.6rem;
+    padding: 0.5rem 0.75rem;
+    min-width: 88px;
+    min-height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.25rem;
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 700;
     color: #fff;
     background: var(--gray-500);
+    cursor: pointer;
+    transition: transform 0.1s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-action:hover {
+    filter: brightness(0.95);
+}
+
+.btn-action:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+.btn-action:disabled,
+.btn-action[disabled] {
+    cursor: not-allowed;
+    opacity: 0.65;
+    filter: grayscale(0.1);
+    transform: none;
 }
 
 .btn-action .material-icons-round {
@@ -368,31 +386,48 @@ select.input-lg {
 }
 
 .btn-action-done {
-    background: #9ca3af;
-    color: #fff;
+    background: var(--gray-200);
+    color: var(--gray-800);
 }
 
 .btn-action-neutral {
-    background: #9ca3af;
+    background: #d1d5db;
+    color: #374151;
+}
+
+.btn-action-static {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.action-helper-text {
+    font-size: 0.75rem;
+    color: var(--text-sub);
+    margin-top: 4px;
+    text-align: center;
 }
 
 .step-chips {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 0.25rem;
-    align-items: center;
 }
 
 .step-chip {
+    display: inline-flex;
+    align-items: center;
     font-size: 0.7rem;
+    font-weight: 600;
     color: var(--text-sub);
     background: var(--gray-100);
     border-radius: 999px;
-    padding: 0.1rem 0.5rem;
-    line-height: 1.3;
+    padding: 0.15rem 0.5rem;
+    white-space: nowrap;
 }
 
 .step-chip-next {
+    background: #ede9fe;
     color: var(--primary-color);
 }
 

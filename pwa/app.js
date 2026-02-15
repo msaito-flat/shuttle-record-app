@@ -433,7 +433,7 @@ const UI = {
             if (isCancel || isSkip) {
                 currentStep = s.status;
                 nextAction = 'メモで変更';
-                btnHtml = '<span class="btn-action btn-action-neutral" style="background:#e0e0e0; color:#666; cursor:not-allowed; pointer-events:none;">メモで変更</span>';
+                btnHtml = '<span class="btn-action btn-action-neutral btn-action-static">メモで変更</span>';
             } else if (!s.status || s.status === '未乗車') {
                 currentStep = '未乗車';
                 nextAction = '乗車';
@@ -447,12 +447,12 @@ const UI = {
                 nextAction = '完了';
                 btnHtml = `
                     <button class="btn-action btn-action-done" disabled><span class="material-icons-round">check_circle</span>完了済み</button>
-                    <div style="font-size:0.75rem; color:var(--text-sub); margin-top:4px; text-align:center;">完了済み（再操作不要）</div>
+                    <div class="action-helper-text">完了済み（再操作不要）</div>
                 `;
             } else {
                 currentStep = s.status || '未設定';
                 nextAction = 'メモで変更';
-                btnHtml = '<span class="btn-action btn-action-neutral" style="background:#e0e0e0; color:#666; cursor:not-allowed; pointer-events:none;">メモで変更</span>';
+                btnHtml = '<span class="btn-action btn-action-neutral btn-action-static">メモで変更</span>';
             }
 
             let timeDisplay = s.scheduledTime;
