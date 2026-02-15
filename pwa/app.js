@@ -51,10 +51,16 @@ const DataManager = {
 
         if (navigator.onLine) {
             try {
-                constcourses = await API.fetch('getCourses', {
+                // Fetch Facilities FIRST
+                const facilities = await API.fetch('getFacilities');
+                Store.data.facilities = facilities;
+                Store.save();
+                UI.renderFacilities(); // Update UI immediately
+
+                const courses = await API.fetch('getCourses', {
                     facilityId: Store.status.currentFacility
                 });
-                Store.data.courses = courses; // typo fix in variable name? const courses
+                Store.data.courses = courses;
 
                 // Pre-load templates if course selected
                 if (Store.status.currentCourse) {

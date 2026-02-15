@@ -8,7 +8,8 @@
     "push": "clasp push",
     "deploy": "clasp deploy --deploymentId AKfycbwj5ZNC3gTMZzMsjFGatdOfFn6o7GOGSHPfImS1Dcj_BRDTKmunOzsNLTXVBWexMg",
     "deploy:new": "clasp deploy",
-    "open": "clasp open"
+    "open": "clasp open",
+    "release": "node scripts/release.js"
   },
   "repository": {
     "type": "git",

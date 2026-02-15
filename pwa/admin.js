@@ -9,11 +9,18 @@ const DataManager = {
         if (navigator.onLine) {
             try {
                 // Fetch basic data
+                // Fetch basic data
+                const facilities = await API.fetch('getFacilities');
+                Store.data.facilities = facilities;
+
                 const courses = await API.fetch('getCourses'); // All courses
                 Store.data.courses = courses;
 
                 const vehicles = await API.fetch('getVehicles');
                 Store.data.vehicles = vehicles;
+
+                const users = await API.fetch('getUsers');
+                Store.data.users = users;
 
                 Store.save();
 
@@ -183,7 +190,7 @@ const AdminManager = {
 
             let label = '';
             if (type === 'vehicle') label = item['車両名'];
-            if (type === 'user') label = item['利用者名'];
+            if (type === 'user') label = item['氏名'];
 
             div.innerHTML = `
                 <span>${label}</span>

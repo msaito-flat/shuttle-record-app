@@ -60,6 +60,22 @@ function setup() {
     vehicleSheet.appendRow(['V002', 'タント', 'タント', '56-78', 'F001', 4, true]);
     vehicleSheet.appendRow(['V003', 'キャラバン', 'キャラバン', '90-12', 'F002', 10, true]);
   }
+
+  // サンプルデータの投入 (利用者マスタが空の場合)
+  const userSheet = ss.getSheetByName('利用者マスタ');
+  if (userSheet.getLastRow() <= 1) {
+    userSheet.appendRow(['U001', '山田 太郎', 'ヤマダ タロウ', 'F001', '東京都千代田区', '', true]);
+    userSheet.appendRow(['U002', '鈴木 花子', 'スズキ ハナコ', 'F001', '東京都新宿区', '', true]);
+    userSheet.appendRow(['U003', '田中 次郎', 'タナカ ジロウ', 'F002', '大阪府大阪市', '', true]);
+  }
+
+  // サンプルデータの投入 (コースマスタが空の場合)
+  const courseSheet = ss.getSheetByName('コースマスタ');
+  if (courseSheet.getLastRow() <= 1) {
+    courseSheet.appendRow(['C001', '早朝コース', 'F001', true]);
+    courseSheet.appendRow(['C002', '夕方コース', 'F001', true]);
+    courseSheet.appendRow(['C003', '大阪コース', 'F002', true]);
+  }
 }
 
 /**
