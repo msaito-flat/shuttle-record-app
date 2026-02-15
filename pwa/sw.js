@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kirari-shuttle-v10';
+const CACHE_NAME = 'kirari-shuttle-v11';
 const ASSETS = [
     './',
     './index.html',
