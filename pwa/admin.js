@@ -501,33 +501,28 @@ const AdminManager = {
 
     // ... existing renderStatus ...
     renderStatus() {
-        // ...
+        const container = document.getElementById('course-status-list');
+        if (!container) return;
+        container.innerHTML = '';
 
+        const courses = Store.data.courses || [];
+        const schedules = Store.data.schedules || [];
 
+        courses.forEach(c => {
+            const courseSchedules = schedules.filter(s => s.courseId === c['コースID']);
+            if (courseSchedules.length === 0) return;
 
-        renderStatus() {
-            const container = document.getElementById('course-status-list');
-            if (!container) return;
-            container.innerHTML = '';
+            const total = courseSchedules.length;
+            const finished = courseSchedules.filter(s => s.status === '降車済').length;
+            const boarded = courseSchedules.filter(s => s.status === '乗車済').length;
 
-            const courses = Store.data.courses || [];
-            const schedules = Store.data.schedules || [];
+            // Progress calculation
+            const progress = total > 0 ? Math.round((finished / total) * 100) : 0;
 
-            courses.forEach(c => {
-                const courseSchedules = schedules.filter(s => s.courseId === c['コースID']);
-                if (courseSchedules.length === 0) return;
-
-                const total = courseSchedules.length;
-                const finished = courseSchedules.filter(s => s.status === '降車済').length;
-                const boarded = courseSchedules.filter(s => s.status === '乗車済').length;
-
-                // Progress calculation
-                const progress = total > 0 ? Math.round((finished / total) * 100) : 0;
-
-                const div = document.createElement('div');
-                div.className = 'card';
-                div.style.marginBottom = '1rem';
-                div.innerHTML = `
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.style.marginBottom = '1rem';
+            div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
                     <strong>${c['コース名']}</strong>
                     <span>${finished}/${total} 完了</span>
@@ -539,13 +534,13 @@ const AdminManager = {
                     乗車中: ${boarded}人 / 未着手: ${total - finished - boarded}人
                 </div>
             `;
-                container.appendChild(div);
-            });
+            container.appendChild(div);
+        });
 
-            if (container.innerHTML === '') {
-                container.innerHTML = '<p class="text-center" style="padding:2rem;">予定がありません</p>';
-            }
-        },
+        if (container.innerHTML === '') {
+            container.innerHTML = '<p class="text-center" style="padding:2rem;">予定がありません</p>';
+        }
+    },
 
         // --- Bulk Editor Logic ---
 
