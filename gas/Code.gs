@@ -338,34 +338,43 @@ function getVehicles(facilityId) {
 function getSchedule(dateString, facilityId, courseId) {
   const schedules = SheetHelper.getData('送迎予定');
   const records = SheetHelper.getData('送迎記録');
-  
+
   if (!dateString) throw new Error('Date is required');
-  
-  // 日付フィルタ
-  const targetSchedules = schedules.filter(s => {
-    const sDate = formatDate(s['日付']);
-    // 日付指定は必須
-    const isSameDate = sDate === dateString;
-    // 事業所指定があればチェック、なければ全て
-    const isSameFacility = facilityId ? s['事業所ID'] === facilityId : true;
-    // コース指定
-    const isSameCourse = courseId ? s['コースID'] === courseId : true;
-    
-    return isSameDate && isSameFacility && isSameCourse;
-  });
 
+  // 1日数百〜数千件規模でも劣化しにくいように、
+  // 日付で絞った配列を線形走査しつつ、予定IDをキーにした連想マップで O(1) 参照する。
+  // (従来の map(...find(...)) は O(n*m) になりやすいため回避)
   const targetRecords = records.filter(r => formatDate(r['日付']) === dateString);
+  const recordMap = targetRecords.reduce((acc, record) => {
+    acc[record['予定ID']] = record;
+    return acc;
+  }, {});
 
-  return targetSchedules.map(sched => {
-    const record = targetRecords.find(r => r['予定ID'] === sched['予定ID']);
-    return {
+  return schedules.reduce((result, sched) => {
+    // 日付指定は必須
+    const isSameDate = formatDate(sched['日付']) === dateString;
+    // 事業所指定があればチェック、なければ全て
+    const isSameFacility = facilityId ? sched['事業所ID'] === facilityId : true;
+    // コース指定
+    const isSameCourse = courseId ? sched['コースID'] === courseId : true;
+
+    if (!(isSameDate && isSameFacility && isSameCourse)) {
+      return result;
+    }
+
+    const record = recordMap[sched['予定ID']];
+    const scheduledTime = formatTime(sched['予定時刻']);
+    const boardTime = record ? formatTime(record['乗車時刻']) : null;
+    const alightTime = record ? formatTime(record['降車時刻']) : null;
+
+    result.push({
       scheduleId: sched['予定ID'],
       date: dateString,
       facilityId: sched['事業所ID'],
       userId: sched['利用者ID'],
       userName: sched['氏名'],
       type: sched['便種別'],
-      scheduledTime: formatTime(sched['予定時刻']),
+      scheduledTime: scheduledTime,
       courseId: sched['コースID'],
       vehicleId: sched['車両ID'],
       vehicleName: sched['車両名'],
@@ -374,11 +383,13 @@ function getSchedule(dateString, facilityId, courseId) {
       routeOrder: sched['ルート順'],
       status: record ? record['ステータス'] : null,
       recordId: record ? record['記録ID'] : null,
-      boardTime: record ? formatTime(record['乗車時刻']) : null,
-      alightTime: record ? formatTime(record['降車時刻']) : null,
+      boardTime: boardTime,
+      alightTime: alightTime,
       note: record ? record['備考'] : null
-    };
-  });
+    });
+
+    return result;
+  }, []);
 }
 
 function checkIn(payload) {
