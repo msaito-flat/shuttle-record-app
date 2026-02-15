@@ -648,6 +648,109 @@ textarea {
     }
 }
 
+.header-back-link {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    color: inherit;
+}
+
+.template-import-area {
+    background: var(--gray-100);
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1rem;
+}
+
+.template-import-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-sub);
+}
+
+.template-import-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.template-import-select {
+    flex: 1;
+}
+
+.editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.editor-hint {
+    font-size: 0.9rem;
+    color: var(--text-sub);
+}
+
+.sticky-actions {
+    margin-top: 1.5rem;
+    position: sticky;
+    bottom: 1rem;
+    z-index: 10;
+    background: linear-gradient(to top, var(--bg-card) 70%, rgba(255, 255, 255, 0));
+    padding-top: 0.75rem;
+}
+
+.editor-empty-state {
+    padding: 2rem;
+    color: var(--text-sub);
+}
+
+.master-toolbar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.master-type-select {
+    flex: 1;
+    min-width: 150px;
+}
+
+.scroll-panel {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.editor-user-name {
+    font-weight: 700;
+    padding: 0.5rem 0;
+}
+
+.admin-btn-inline {
+    width: auto;
+    margin-top: 0;
+    padding: 0.75rem 1rem;
+}
+
+.admin-btn-block {
+    width: 100%;
+}
+
+.admin-btn-primary-main {
+    box-shadow: var(--shadow-md);
+}
+
+.admin-btn-subtle {
+    margin-top: 0.5rem;
+}
+
+.admin-btn-quiet {
+    margin-top: 0;
+    padding: 0.25rem 0.5rem;
+}
+
 /* Admin View Specific */
 .admin-card {
     max-width: 600px;

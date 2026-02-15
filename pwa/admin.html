@@ -37,8 +37,7 @@
     <section id="view-admin" class="view">
         <header class="app-header">
             <div class="header-left">
-                <a href="index.html" class="icon-btn"
-                    style="text-decoration:none; display:flex; align-items:center; color:inherit;">
+                <a href="index.html" class="icon-btn header-back-link">
                     <span class="material-icons-round">arrow_back</span>
                 </a>
                 <div class="header-info">
@@ -77,22 +76,19 @@
                     </div>
 
                     <!-- 2. Import Template (Optional) -->
-                    <div class="template-import-area"
-                        style="background:#f8f9fa; padding:1rem; border-radius:8px; margin-bottom:1rem;">
-                        <label style="font-size:0.9rem; font-weight:bold; color:#666;">テンプレートから読み込み (上書き)</label>
-                        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-                            <select id="edit-template-select" class="input-lg" style="flex:1;"></select>
-                            <button id="btn-load-template" class="btn-secondary">展開</button>
+                    <div class="template-import-area">
+                        <label class="template-import-label">テンプレートから読み込み (上書き)</label>
+                        <div class="template-import-controls">
+                            <select id="edit-template-select" class="input-lg template-import-select"></select>
+                            <button id="btn-load-template" class="btn-secondary admin-btn-inline">展開</button>
                         </div>
                     </div>
 
                     <!-- 3. Editor Table -->
                     <div id="editor-container" class="hidden">
-                        <div class="editor-toolbar"
-                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                            <span id="editor-status-text"
-                                style="font-size:0.9rem; color:#666;">変更内容は「保存」するまで反映されません</span>
-                            <button id="btn-add-row" class="btn-text">+ 利用者追加</button>
+                        <div class="editor-toolbar">
+                            <span id="editor-status-text" class="editor-hint">変更内容は「保存」するまで反映されません</span>
+                            <button id="btn-add-row" class="btn-text admin-btn-quiet">+ 利用者追加</button>
                         </div>
 
                         <div class="table-responsive">
@@ -113,18 +109,17 @@
                             </table>
                         </div>
 
-                        <div class="form-actions" style="margin-top:1.5rem; position:sticky; bottom:1rem; z-index:10;">
-                            <button id="btn-save-bulk" class="btn-primary"
-                                style="width:100%; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">
+                        <div class="form-actions sticky-actions">
+                            <button id="btn-save-bulk" class="btn-primary admin-btn-block admin-btn-primary-main">
                                 この内容で保存する
                             </button>
-                            <button id="btn-save-template" class="btn-secondary" style="width:100%; margin-top:0.5rem;">
+                            <button id="btn-save-template" class="btn-secondary admin-btn-block admin-btn-subtle">
                                 テンプレートとして保存
                             </button>
                         </div>
                     </div>
 
-                    <div id="editor-empty" class="text-center" style="padding:2rem; color:#999;">
+                    <div id="editor-empty" class="text-center editor-empty-state">
                         コースを選択してください
                     </div>
                 </div>
@@ -135,20 +130,18 @@
                 <div class="card admin-card">
                     <h3>マスタデータ管理</h3>
 
-                    <div class="master-toolbar"
-                        style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem; flex-wrap:wrap;">
-                        <select id="master-type-select" class="input-lg" style="flex:1; min-width:150px;">
+                    <div class="master-toolbar">
+                        <select id="master-type-select" class="input-lg master-type-select">
                             <option value="user">利用者マスタ</option>
                             <option value="vehicle">車両マスタ</option>
                             <option value="course">コースマスタ</option>
                             <option value="facility">事業所マスタ</option>
                         </select>
-                        <button id="btn-master-add" class="btn-secondary">+ 新規追加</button>
-                        <button id="btn-master-save" class="btn-primary">保存する</button>
+                        <button id="btn-master-add" class="btn-secondary admin-btn-inline">+ 新規追加</button>
+                        <button id="btn-master-save" class="btn-primary admin-btn-inline admin-btn-primary-main">保存する</button>
                     </div>
 
-                    <div id="master-table-container" class="table-responsive"
-                        style="max-height: 500px; overflow-y:auto;">
+                    <div id="master-table-container" class="table-responsive scroll-panel">
                         <!-- Table injected here -->
                     </div>
                 </div>
@@ -162,7 +155,7 @@
             <h3>予定の編集</h3>
             <div class="form-group">
                 <label>利用者名</label>
-                <div id="edit-user-name" style="font-weight:bold; padding:0.5rem 0;"></div>
+                <div id="edit-user-name" class="editor-user-name"></div>
             </div>
             <div class="form-group">
                 <label>予定時刻</label>
@@ -173,8 +166,8 @@
                 <select id="edit-vehicle-select" class="input-lg"></select>
             </div>
             <div class="form-actions">
-                <button id="btn-cancel-edit" class="btn-secondary">キャンセル</button>
-                <button id="btn-save-edit" class="btn-primary">保存</button>
+                <button id="btn-cancel-edit" class="btn-secondary admin-btn-subtle">キャンセル</button>
+                <button id="btn-save-edit" class="btn-primary admin-btn-primary-main">保存</button>
             </div>
         </div>
     </div>
