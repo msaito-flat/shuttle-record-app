@@ -427,20 +427,32 @@ const UI = {
             if (isSkip) statusClass = 'status-skip';
             if (isCancel) statusClass = 'status-cancel';
 
+            let currentStep = '未乗車';
+            let nextAction = '乗車';
             let btnHtml = '';
             if (isCancel || isSkip) {
-                btnHtml = '<span class="btn-action" style="background:#e0e0e0; color:#666; cursor:not-allowed; pointer-events:none;">メモで変更</span>';
+                currentStep = s.status;
+                nextAction = 'メモで変更';
+                btnHtml = '<span class="btn-action btn-action-neutral" style="background:#e0e0e0; color:#666; cursor:not-allowed; pointer-events:none;">メモで変更</span>';
             } else if (!s.status || s.status === '未乗車') {
-                btnHtml = `<button class="btn-action btn-action-ride" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">乗車</button>`;
+                currentStep = '未乗車';
+                nextAction = '乗車';
+                btnHtml = `<button class="btn-action btn-action-ride" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')"><span class="material-icons-round">directions_car</span>乗車</button>`;
             } else if (s.status === '乗車済') {
-                btnHtml = `<button class="btn-action btn-action-drop" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">降車</button>`;
+                currentStep = '乗車済';
+                nextAction = '降車';
+                btnHtml = `<button class="btn-action btn-action-drop" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')"><span class="material-icons-round">south</span>降車</button>`;
             } else if (s.status === '降車済') {
+                currentStep = '降車済';
+                nextAction = '完了';
                 btnHtml = `
-                    <button class="btn-action btn-action-done" disabled>完了</button>
+                    <button class="btn-action btn-action-done" disabled><span class="material-icons-round">check_circle</span>完了済み</button>
                     <div style="font-size:0.75rem; color:var(--text-sub); margin-top:4px; text-align:center;">完了済み（再操作不要）</div>
                 `;
             } else {
-                btnHtml = `<button class="btn-action" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">?</button>`;
+                currentStep = s.status || '未設定';
+                nextAction = 'メモで変更';
+                btnHtml = '<span class="btn-action btn-action-neutral" style="background:#e0e0e0; color:#666; cursor:not-allowed; pointer-events:none;">メモで変更</span>';
             }
 
             let timeDisplay = s.scheduledTime;
@@ -461,6 +473,10 @@ const UI = {
                     </div>
                 </div>
                 <div class="card-action">
+                    <div class="step-chips" aria-label="現在ステップと次アクション">
+                        <span class="step-chip">現在: ${currentStep}</span>
+                        <span class="step-chip step-chip-next">次: ${nextAction}</span>
+                    </div>
                     ${btnHtml}
                     <button class="memo-btn" onclick="event.stopPropagation(); UI.openMemo('${s.scheduleId}')">
                         <span class="material-icons-round" style="font-size:20px">edit_note</span>
