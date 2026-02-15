@@ -595,109 +595,109 @@ const AdminManager = {
         }
     },
 
-        // --- Bulk Editor Logic ---
+    // --- Bulk Editor Logic ---
 
-        initEditTabUI() {
-            const courseSelect = document.getElementById('edit-course-select');
-            // Populate courses
-            courseSelect.innerHTML = '';
-            const defaultCourseOption = document.createElement('option');
-            defaultCourseOption.value = '';
-            defaultCourseOption.textContent = 'コースを選択';
-            courseSelect.appendChild(defaultCourseOption);
-            if (Store.data.courses) {
-                Store.data.courses.forEach(c => {
-                    const op = document.createElement('option');
-                    op.value = c['コースID'];
-                    op.textContent = c['コース名'];
-                    courseSelect.appendChild(op);
-                });
-            }
+    initEditTabUI() {
+        const courseSelect = document.getElementById('edit-course-select');
+        // Populate courses
+        courseSelect.innerHTML = '';
+        const defaultCourseOption = document.createElement('option');
+        defaultCourseOption.value = '';
+        defaultCourseOption.textContent = 'コースを選択';
+        courseSelect.appendChild(defaultCourseOption);
+        if (Store.data.courses) {
+            Store.data.courses.forEach(c => {
+                const op = document.createElement('option');
+                op.value = c['コースID'];
+                op.textContent = c['コース名'];
+                courseSelect.appendChild(op);
+            });
+        }
 
-            // Restore selected if any
-            if (this.currentEditCourseId) {
-                courseSelect.value = this.currentEditCourseId;
-            }
-        },
+        // Restore selected if any
+        if (this.currentEditCourseId) {
+            courseSelect.value = this.currentEditCourseId;
+        }
+    },
 
-        reInitEditorState() {
-            if (this.currentEditCourseId) {
-                this.initEditor(this.currentEditCourseId, false); // false = don't reset draft if already loaded?
-                // Actually, if we switched tabs or refreshed data, we should reload from Store
-                // But if user has unsaved changes... 
-                // For now, simple version: Reload from store triggers overwrite.
-                // Let's reload from Store.
-                this.initEditor(this.currentEditCourseId, true);
-            } else {
-                document.getElementById('editor-container').classList.add('hidden');
-                document.getElementById('editor-empty').classList.remove('hidden');
-            }
-        },
+    reInitEditorState() {
+        if (this.currentEditCourseId) {
+            this.initEditor(this.currentEditCourseId, false); // false = don't reset draft if already loaded?
+            // Actually, if we switched tabs or refreshed data, we should reload from Store
+            // But if user has unsaved changes...
+            // For now, simple version: Reload from store triggers overwrite.
+            // Let's reload from Store.
+            this.initEditor(this.currentEditCourseId, true);
+        } else {
+            document.getElementById('editor-container').classList.add('hidden');
+            document.getElementById('editor-empty').classList.remove('hidden');
+        }
+    },
 
     async initEditor(courseId, reloadFromStore = true) {
-            this.currentEditCourseId = courseId;
+        this.currentEditCourseId = courseId;
 
-            if (!courseId) {
-                document.getElementById('editor-container').classList.add('hidden');
-                document.getElementById('editor-empty').classList.remove('hidden');
-                return;
-            }
+        if (!courseId) {
+            document.getElementById('editor-container').classList.add('hidden');
+            document.getElementById('editor-empty').classList.remove('hidden');
+            return;
+        }
 
-            document.getElementById('editor-container').classList.remove('hidden');
-            document.getElementById('editor-empty').classList.add('hidden');
+        document.getElementById('editor-container').classList.remove('hidden');
+        document.getElementById('editor-empty').classList.add('hidden');
 
-            // Populate Template Select for this Course AND 'common' templates? 
-            // For now, just course specific. 
-            // Note: We need to fetch templates for this course.
-            this.renderTemplateOptionsForEditor(courseId);
+        // Populate Template Select for this Course AND 'common' templates?
+        // For now, just course specific.
+        // Note: We need to fetch templates for this course.
+        this.renderTemplateOptionsForEditor(courseId);
 
-            if (reloadFromStore) {
-                // Filter schedules for this course
-                const schedules = (Store.data.schedules || []).filter(s => s.courseId === courseId);
-                // Sort by order
-                schedules.sort((a, b) => (a.routeOrder || 99) - (b.routeOrder || 99));
+        if (reloadFromStore) {
+            // Filter schedules for this course
+            const schedules = (Store.data.schedules || []).filter(s => s.courseId === courseId);
+            // Sort by order
+            schedules.sort((a, b) => (a.routeOrder || 99) - (b.routeOrder || 99));
 
-                // Allow manual sort? For now, just display in order.
+            // Allow manual sort? For now, just display in order.
 
-                // Deep copy for draft
-                this.draftSchedules = schedules.map(s => ({ ...s }));
-            }
+            // Deep copy for draft
+            this.draftSchedules = schedules.map(s => ({ ...s }));
+        }
 
-            this.renderEditorTable();
-        },
+        this.renderEditorTable();
+    },
 
     async renderTemplateOptionsForEditor(courseId) {
-            const templateSelect = document.getElementById('edit-template-select');
+        const templateSelect = document.getElementById('edit-template-select');
+        templateSelect.innerHTML = '';
+        const loadingOption = document.createElement('option');
+        loadingOption.value = '';
+        loadingOption.textContent = '読み込み中...';
+        templateSelect.appendChild(loadingOption);
+        try {
+            const templates = await API.fetch('getTemplates', { courseId });
             templateSelect.innerHTML = '';
-            const loadingOption = document.createElement('option');
-            loadingOption.value = '';
-            loadingOption.textContent = '読み込み中...';
-            templateSelect.appendChild(loadingOption);
-            try {
-                const templates = await API.fetch('getTemplates', { courseId });
-                templateSelect.innerHTML = '';
-                const defaultTemplateOption = document.createElement('option');
-                defaultTemplateOption.value = '';
-                defaultTemplateOption.textContent = 'テンプレートを選択...';
-                templateSelect.appendChild(defaultTemplateOption);
-                templates.forEach(t => {
-                    const op = document.createElement('option');
-                    op.value = t.templateId;
-                    op.textContent = t.templateName;
-                    templateSelect.appendChild(op);
-                });
-            } catch (e) {
-                console.warn(e);
-                templateSelect.innerHTML = '';
-                const errorOption = document.createElement('option');
-                errorOption.textContent = 'エラー';
-                templateSelect.appendChild(errorOption);
-            }
-        },
+            const defaultTemplateOption = document.createElement('option');
+            defaultTemplateOption.value = '';
+            defaultTemplateOption.textContent = 'テンプレートを選択...';
+            templateSelect.appendChild(defaultTemplateOption);
+            templates.forEach(t => {
+                const op = document.createElement('option');
+                op.value = t.templateId;
+                op.textContent = t.templateName;
+                templateSelect.appendChild(op);
+            });
+        } catch (e) {
+            console.warn(e);
+            templateSelect.innerHTML = '';
+            const errorOption = document.createElement('option');
+            errorOption.textContent = 'エラー';
+            templateSelect.appendChild(errorOption);
+        }
+    },
 
     async loadFromTemplate() {
-            const templateId = document.getElementById('edit-template-select').value;
-            if (!templateId) return;
+        const templateId = document.getElementById('edit-template-select').value;
+        if (!templateId) return;
 
             if (this.draftSchedules.length > 0) {
                 if (!confirm('現在の編集内容を破棄して、テンプレートを展開しますか？')) return;
