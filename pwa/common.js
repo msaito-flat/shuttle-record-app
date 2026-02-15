@@ -3,7 +3,7 @@
 
 // CONFIGURATION
 const API_URL = 'https://script.google.com/macros/s/AKfycbwj5ZNC3gTMZzMsjFGatdOfFn6o7GOGSHPfImS1Dcj_BRDTKmunOzsNLTXVBWexMg/exec';
-const APP_VERSION = 'v1.0.14'; // Display Version
+const APP_VERSION = 'v1.0.15'; // Display Version
 
 // STATE MANAGEMENT
 const Store = {
