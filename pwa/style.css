@@ -488,6 +488,24 @@ textarea {
     cursor: pointer;
 }
 
+
+.setup-admin-link {
+    display: inline-flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 0.75rem;
+    color: var(--text-sub);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
+}
+
+.setup-admin-link:hover,
+.setup-admin-link:focus-visible {
+    color: var(--text-main);
+}
+
 /* Loading */
 .spinner {
     width: 40px;
