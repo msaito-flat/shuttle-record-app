@@ -499,60 +499,83 @@ const AdminManager = {
         }
     },
 
-    // ... existing renderStatus ...
     renderStatus() {
-        // ...
+        const container = document.getElementById('course-status-list');
+        if (!container) return;
+        container.innerHTML = '';
 
+        const courses = Store.data.courses || [];
+        const schedules = Store.data.schedules || [];
 
+        courses.forEach(c => {
+            const courseSchedules = schedules.filter(s => s.courseId === c['コースID']);
+            if (courseSchedules.length === 0) return;
 
-        renderStatus() {
-            const container = document.getElementById('course-status-list');
-            if (!container) return;
-            container.innerHTML = '';
+            const total = courseSchedules.length;
+            const finished = courseSchedules.filter(s => s.status === '降車済').length;
+            const boarded = courseSchedules.filter(s => s.status === '乗車済').length;
+            const progress = total > 0 ? Math.round((finished / total) * 100) : 0;
 
-            const courses = Store.data.courses || [];
-            const schedules = Store.data.schedules || [];
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.marginBottom = '1rem';
 
-            courses.forEach(c => {
-                const courseSchedules = schedules.filter(s => s.courseId === c['コースID']);
-                if (courseSchedules.length === 0) return;
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.marginBottom = '0.5rem';
 
-                const total = courseSchedules.length;
-                const finished = courseSchedules.filter(s => s.status === '降車済').length;
-                const boarded = courseSchedules.filter(s => s.status === '乗車済').length;
+            const courseName = document.createElement('strong');
+            courseName.textContent = c['コース名'] || '';
+            header.appendChild(courseName);
 
-                // Progress calculation
-                const progress = total > 0 ? Math.round((finished / total) * 100) : 0;
+            const finishedText = document.createElement('span');
+            finishedText.textContent = `${finished}/${total} 完了`;
+            header.appendChild(finishedText);
 
-                const div = document.createElement('div');
-                div.className = 'card';
-                div.style.marginBottom = '1rem';
-                div.innerHTML = `
-                <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                    <strong>${c['コース名']}</strong>
-                    <span>${finished}/${total} 完了</span>
-                </div>
-                <div style="background:#eee; height:10px; border-radius:5px; overflow:hidden;">
-                    <div style="background:var(--success-color); width:${progress}%; height:100%;"></div>
-                </div>
-                <div style="margin-top:0.5rem; font-size:0.8rem; color:var(--text-sub);">
-                    乗車中: ${boarded}人 / 未着手: ${total - finished - boarded}人
-                </div>
-            `;
-                container.appendChild(div);
-            });
+            const progressBase = document.createElement('div');
+            progressBase.style.background = '#eee';
+            progressBase.style.height = '10px';
+            progressBase.style.borderRadius = '5px';
+            progressBase.style.overflow = 'hidden';
 
-            if (container.innerHTML === '') {
-                container.innerHTML = '<p class="text-center" style="padding:2rem;">予定がありません</p>';
-            }
-        },
+            const progressBar = document.createElement('div');
+            progressBar.style.background = 'var(--success-color)';
+            progressBar.style.width = `${progress}%`;
+            progressBar.style.height = '100%';
+            progressBase.appendChild(progressBar);
+
+            const detail = document.createElement('div');
+            detail.style.marginTop = '0.5rem';
+            detail.style.fontSize = '0.8rem';
+            detail.style.color = 'var(--text-sub)';
+            detail.textContent = `乗車中: ${boarded}人 / 未着手: ${total - finished - boarded}人`;
+
+            card.appendChild(header);
+            card.appendChild(progressBase);
+            card.appendChild(detail);
+            container.appendChild(card);
+        });
+
+        if (container.childElementCount === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'text-center';
+            empty.style.padding = '2rem';
+            empty.textContent = '予定がありません';
+            container.appendChild(empty);
+        }
+    },
 
         // --- Bulk Editor Logic ---
 
         initEditTabUI() {
             const courseSelect = document.getElementById('edit-course-select');
             // Populate courses
-            courseSelect.innerHTML = '<option value="">コースを選択</option>';
+            courseSelect.innerHTML = '';
+            const defaultCourseOption = document.createElement('option');
+            defaultCourseOption.value = '';
+            defaultCourseOption.textContent = 'コースを選択';
+            courseSelect.appendChild(defaultCourseOption);
             if (Store.data.courses) {
                 Store.data.courses.forEach(c => {
                     const op = document.createElement('option');
@@ -616,10 +639,18 @@ const AdminManager = {
 
     async renderTemplateOptionsForEditor(courseId) {
             const templateSelect = document.getElementById('edit-template-select');
-            templateSelect.innerHTML = '<option value="">読み込み中...</option>';
+            templateSelect.innerHTML = '';
+            const loadingOption = document.createElement('option');
+            loadingOption.value = '';
+            loadingOption.textContent = '読み込み中...';
+            templateSelect.appendChild(loadingOption);
             try {
                 const templates = await API.fetch('getTemplates', { courseId });
-                templateSelect.innerHTML = '<option value="">テンプレートを選択...</option>';
+                templateSelect.innerHTML = '';
+                const defaultTemplateOption = document.createElement('option');
+                defaultTemplateOption.value = '';
+                defaultTemplateOption.textContent = 'テンプレートを選択...';
+                templateSelect.appendChild(defaultTemplateOption);
                 templates.forEach(t => {
                     const op = document.createElement('option');
                     op.value = t.templateId;
@@ -628,7 +659,10 @@ const AdminManager = {
                 });
             } catch (e) {
                 console.warn(e);
-                templateSelect.innerHTML = '<option>エラー</option>';
+                templateSelect.innerHTML = '';
+                const errorOption = document.createElement('option');
+                errorOption.textContent = 'エラー';
+                templateSelect.appendChild(errorOption);
             }
         },
 
@@ -740,25 +774,35 @@ const AdminManager = {
 
                 // Time
                 const timeTd = document.createElement('td');
-                timeTd.innerHTML = `<input type="time" value="${item.scheduledTime || ''}">`;
-                timeTd.querySelector('input').addEventListener('change', (e) => this.updateRow(index, 'scheduledTime', e.target.value));
+                const timeInput = document.createElement('input');
+                timeInput.type = 'time';
+                timeInput.value = item.scheduledTime || '';
+                timeInput.addEventListener('change', (e) => this.updateRow(index, 'scheduledTime', e.target.value));
+                timeTd.appendChild(timeInput);
                 tr.appendChild(timeTd);
 
                 // Type
                 const typeTd = document.createElement('td');
-                typeTd.innerHTML = `
-                <select>
-                    <option value="迎え" ${item.type === '迎え' ? 'selected' : ''}>迎え</option>
-                    <option value="送り" ${item.type === '送り' ? 'selected' : ''}>送り</option>
-                </select>`;
-                typeTd.querySelector('select').addEventListener('change', (e) => this.updateRow(index, 'type', e.target.value));
+                const typeSelect = document.createElement('select');
+                ['迎え', '送り'].forEach(typeLabel => {
+                    const option = document.createElement('option');
+                    option.value = typeLabel;
+                    option.textContent = typeLabel;
+                    option.selected = item.type === typeLabel;
+                    typeSelect.appendChild(option);
+                });
+                typeSelect.addEventListener('change', (e) => this.updateRow(index, 'type', e.target.value));
+                typeTd.appendChild(typeSelect);
                 tr.appendChild(typeTd);
 
                 // User
                 const userTd = document.createElement('td');
                 // Create Select for User
                 const userSelect = document.createElement('select');
-                userSelect.innerHTML = '<option value="">選択...</option>';
+                const defaultUserOption = document.createElement('option');
+                defaultUserOption.value = '';
+                defaultUserOption.textContent = '選択...';
+                userSelect.appendChild(defaultUserOption);
                 users.forEach(u => {
                     const op = document.createElement('option');
                     op.value = u['利用者ID'];
@@ -773,7 +817,10 @@ const AdminManager = {
                 // Vehicle
                 const vehicleTd = document.createElement('td');
                 const vehSelect = document.createElement('select');
-                vehSelect.innerHTML = '<option value="">未指定</option>';
+                const defaultVehicleOption = document.createElement('option');
+                defaultVehicleOption.value = '';
+                defaultVehicleOption.textContent = '未指定';
+                vehSelect.appendChild(defaultVehicleOption);
                 vehicles.forEach(v => {
                     const op = document.createElement('option');
                     op.value = v['車両ID'];
@@ -787,8 +834,14 @@ const AdminManager = {
 
                 // Action
                 const actionTd = document.createElement('td');
-                actionTd.innerHTML = `<button class="btn-icon"><span class="material-icons-round">delete</span></button>`;
-                actionTd.querySelector('button').addEventListener('click', () => this.removeRow(index));
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-icon';
+                const deleteIcon = document.createElement('span');
+                deleteIcon.className = 'material-icons-round';
+                deleteIcon.textContent = 'delete';
+                deleteBtn.appendChild(deleteIcon);
+                deleteBtn.addEventListener('click', () => this.removeRow(index));
+                actionTd.appendChild(deleteBtn);
                 tr.appendChild(actionTd);
 
                 tbody.appendChild(tr);
