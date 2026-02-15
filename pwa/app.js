@@ -59,6 +59,15 @@ const SyncManager = {
 // DATA LOADING (Driver specific)
 const DataManager = {
     async init() {
+        console.log('DataManager init');
+
+        // Show Version
+        const vEl = document.getElementById('app-version');
+        if (vEl && typeof APP_VERSION !== 'undefined') {
+            vEl.textContent = `(${APP_VERSION})`;
+            vEl.style.opacity = '1.0';
+        }
+
         Store.load();
 
         // Cached data first for faster first paint
