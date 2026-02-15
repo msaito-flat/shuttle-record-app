@@ -83,6 +83,12 @@ function doPost(e) {
       case 'bulkUpdateSchedules':
         result = bulkUpdateSchedules(data);
         break;
+      case 'updateMasterData':
+        result = updateMasterData(data);
+        break;
+      case 'createTemplate':
+        result = createTemplate(data);
+        break;
       case 'setup':
         setup();
         result = { message: 'Database initialized' };
@@ -96,10 +102,114 @@ function doPost(e) {
   }
 }
 
+
 function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+/**
+ * マスタデータ更新 (Admin)
+ * @param {Object} data { type: 'user'|'vehicle'|'course'|'facility', items: [...] }
+ */
+function updateMasterData(data) {
+  const type = data.type;
+  const items = data.items || [];
+  let sheetName, idPrefix, idColumn;
+
+  switch (type) {
+    case 'user':
+      sheetName = '利用者マスタ';
+      idPrefix = 'U';
+      idColumn = '利用者ID';
+      break;
+    case 'vehicle':
+      sheetName = '車両マスタ';
+      idPrefix = 'V';
+      idColumn = '車両ID';
+      break;
+    case 'course':
+      sheetName = 'コースマスタ';
+      idPrefix = 'C';
+      idColumn = 'コースID';
+      break;
+    case 'facility':
+      sheetName = '事業所マスタ';
+      idPrefix = 'F';
+      idColumn = '事業所ID';
+      break;
+    default:
+      throw new Error('Unknown master type');
+  }
+
+  const results = [];
+  items.forEach(item => {
+    if (item[idColumn]) {
+      // Update
+      const success = SheetHelper.updateData(sheetName, idColumn, item[idColumn], item);
+      if (success) {
+        results.push({ status: 'updated', id: item[idColumn] });
+      } else {
+         // ID exists in payload but not found in sheet -> Treat as new or error?
+         // Let's treat as error for safety.
+         results.push({ status: 'error', message: 'ID not found', id: item[idColumn] });
+      }
+    } else {
+      // Create New
+      const newId = SheetHelper.insertData(sheetName, item, idPrefix);
+      results.push({ status: 'created', id: newId });
+    }
+  });
+
+  return results;
+}
+
+/**
+ * テンプレート作成 (Admin)
+ * @param {Object} data { courseId, templateName, items: [{type, time, userId, order}] }
+ */
+function createTemplate(data) {
+  const { courseId, templateName, items } = data;
+  
+  // Validation
+  if (!courseId) throw new Error('Course ID is required');
+  if (!templateName) throw new Error('Template Name is required');
+  
+  // 1. Save Header
+  const templateId = SheetHelper.insertData('予定テンプレート', {
+    'コースID': courseId,
+    'テンプレート名': templateName
+  }, 'T');
+
+  // 2. Save Details
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const detailSheet = ss.getSheetByName('テンプレート詳細');
+  
+  if (!items || items.length === 0) return { templateId, message: 'Template created (empty)' };
+
+  // Prepare rows: [テンプレートID, 到着順, 時間, 種別, 利用者ID] (Check columns in Setup.gs or sheet)
+  // Warning: Column order must match Setup.gs! 
+  // Setup.gs: ['テンプレートID', 'ルート順', '時間', '種別', '利用者ID']
+  
+  const rows = items.map((item, index) => {
+    return [
+      templateId,
+      item.routeOrder || (index + 1),
+      item.time || item.scheduledTime,
+      item.type,
+      item.userId
+    ];
+  });
+
+  if (rows.length > 0) {
+    const lastRow = detailSheet.getLastRow();
+     // column 1 to 5
+    detailSheet.getRange(lastRow + 1, 1, rows.length, 5).setValues(rows);
+  }
+
+  return { templateId, message: 'Template created', count: rows.length };
+}
+
 
 // --- 既存のロジック関数 (変更なし) ---
 

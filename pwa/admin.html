@@ -118,6 +118,9 @@
                                 style="width:100%; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">
                                 この内容で保存する
                             </button>
+                            <button id="btn-save-template" class="btn-secondary" style="width:100%; margin-top:0.5rem;">
+                                テンプレートとして保存
+                            </button>
                         </div>
                     </div>
 
@@ -131,16 +134,23 @@
             <div id="admin-tab-master" class="admin-tab-content hidden">
                 <div class="card admin-card">
                     <h3>マスタデータ管理</h3>
-                    <div class="form-group">
-                        <select id="master-type-select" class="input-lg">
-                            <option value="vehicle">車両マスタ</option>
+
+                    <div class="master-toolbar"
+                        style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem; flex-wrap:wrap;">
+                        <select id="master-type-select" class="input-lg" style="flex:1; min-width:150px;">
                             <option value="user">利用者マスタ</option>
+                            <option value="vehicle">車両マスタ</option>
+                            <option value="course">コースマスタ</option>
+                            <option value="facility">事業所マスタ</option>
                         </select>
+                        <button id="btn-master-add" class="btn-secondary">+ 新規追加</button>
+                        <button id="btn-master-save" class="btn-primary">保存する</button>
                     </div>
-                    <div id="master-list" class="user-selection-list" style="max-height: 400px;">
-                        <!-- Master items injected here -->
+
+                    <div id="master-table-container" class="table-responsive"
+                        style="max-height: 500px; overflow-y:auto;">
+                        <!-- Table injected here -->
                     </div>
-                    <button id="btn-add-master" class="btn-secondary">+ 新規登録 (未実装)</button>
                 </div>
             </div>
         </main>
