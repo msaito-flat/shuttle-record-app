@@ -129,6 +129,14 @@ const UI = {
 // ADMIN MANAGER
 const AdminManager = {
     networkListenersBound: false,
+    editFilters: {
+        type: '',
+        userQuery: '',
+        unassignedVehicleOnly: false
+    },
+    masterSearchQuery: '',
+    draftSchedules: [],
+    originalDraftSnapshot: [],
 
     init() {
         this.bindNetworkListeners();
@@ -177,6 +185,30 @@ const AdminManager = {
         if (saveBulkBtn) {
             saveBulkBtn.addEventListener('click', () => {
                 this.saveBulk();
+            });
+        }
+
+        const typeFilter = document.getElementById('edit-filter-type');
+        if (typeFilter) {
+            typeFilter.addEventListener('change', (e) => {
+                this.editFilters.type = e.target.value;
+                this.renderEditorTable();
+            });
+        }
+
+        const userFilter = document.getElementById('edit-filter-user');
+        if (userFilter) {
+            userFilter.addEventListener('input', (e) => {
+                this.editFilters.userQuery = e.target.value;
+                this.renderEditorTable();
+            });
+        }
+
+        const unassignedFilter = document.getElementById('edit-filter-unassigned-vehicle');
+        if (unassignedFilter) {
+            unassignedFilter.addEventListener('change', (e) => {
+                this.editFilters.unassignedVehicleOnly = e.target.checked;
+                this.renderEditorTable();
             });
         }
 
@@ -249,6 +281,15 @@ const AdminManager = {
         if (select) {
             select.addEventListener('change', () => this.renderMasterTab());
         }
+
+        const masterSearch = document.getElementById('master-search-input');
+        if (masterSearch) {
+            masterSearch.addEventListener('input', (e) => {
+                this.masterSearchQuery = e.target.value || '';
+                this.renderMasterTab();
+            });
+        }
+
         document.getElementById('btn-master-add').addEventListener('click', () => this.addMasterRow());
         document.getElementById('btn-master-save').addEventListener('click', () => this.saveMaster());
 
@@ -324,8 +365,10 @@ const AdminManager = {
         if (type === 'course') data = Store.data.courses || [];
         if (type === 'facility') data = Store.data.facilities || [];
 
-        // Clone for draft (if we want safely, but direct render is easier for now)
-        // We will read from DOM on save.
+        const query = (this.masterSearchQuery || '').trim().toLowerCase();
+        if (query) {
+            data = data.filter(item => this.matchMasterSearch(item, def, query));
+        }
 
         const table = document.createElement('table');
         table.className = 'editor-table';
@@ -354,8 +397,27 @@ const AdminManager = {
         data.forEach(item => {
             tbody.appendChild(this.createMasterRow(type, item, def));
         });
+
+        if (data.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = def.fields.length + 1;
+            td.className = 'text-center';
+            td.textContent = query ? '検索条件に一致するデータがありません' : 'データがありません';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+
         table.appendChild(tbody);
         container.appendChild(table);
+    },
+
+    matchMasterSearch(item, def, query) {
+        return def.fields.some(field => {
+            const value = item[field.key];
+            if (value === undefined || value === null) return false;
+            return String(value).toLowerCase().includes(query);
+        });
     },
 
     createMasterRow(type, item, def) {
@@ -640,6 +702,8 @@ const AdminManager = {
         this.currentEditCourseId = courseId;
 
         if (!courseId) {
+            this.draftSchedules = [];
+            this.originalDraftSnapshot = [];
             document.getElementById('editor-container').classList.add('hidden');
             document.getElementById('editor-empty').classList.remove('hidden');
             return;
@@ -663,6 +727,7 @@ const AdminManager = {
 
             // Deep copy for draft
             this.draftSchedules = schedules.map(s => ({ ...s }));
+            this.originalDraftSnapshot = schedules.map(s => ({ ...s }));
         }
 
         this.renderEditorTable();
@@ -778,17 +843,117 @@ const AdminManager = {
 
         updateRow(index, field, value) {
             const item = this.draftSchedules[index];
+            if (!item) return;
             item[field] = value;
 
             // Side effects
             if (field === 'userId') {
-                const u = Store.data.users.find(User => User['利用者ID'] === value);
+                const u = (Store.data.users || []).find(User => User['利用者ID'] === value);
                 item.userName = u ? u['氏名'] : '';
             }
             if (field === 'vehicleId') {
-                const v = Store.data.vehicles.find(Veh => Veh['車両ID'] === value);
+                const v = (Store.data.vehicles || []).find(Veh => Veh['車両ID'] === value);
                 item.vehicleName = v ? v['車両名'] : '';
             }
+
+            this.renderEditorTable();
+        },
+
+        getFilteredDraftSchedules() {
+            const typeFilter = this.editFilters.type;
+            const userQuery = (this.editFilters.userQuery || '').trim().toLowerCase();
+            const unassignedOnly = this.editFilters.unassignedVehicleOnly;
+
+            return this.draftSchedules
+                .map((item, index) => ({ item, index }))
+                .filter(({ item }) => {
+                    if (typeFilter && item.type !== typeFilter) return false;
+                    if (userQuery) {
+                        const name = String(item.userName || '').toLowerCase();
+                        if (!name.includes(userQuery)) return false;
+                    }
+                    if (unassignedOnly && item.vehicleId) return false;
+                    return true;
+                });
+        },
+
+        getDraftValidation() {
+            const issuesByIndex = {};
+            const duplicateMap = new Map();
+
+            this.draftSchedules.forEach((item, index) => {
+                const issues = [];
+                if (!item.userId) issues.push('利用者未選択');
+                if (!item.scheduledTime) issues.push('時刻未入力');
+
+                if (item.userId && item.scheduledTime && item.type) {
+                    const dupKey = `${item.userId}__${item.scheduledTime}__${item.type}`;
+                    if (!duplicateMap.has(dupKey)) duplicateMap.set(dupKey, []);
+                    duplicateMap.get(dupKey).push(index);
+                }
+
+                if (issues.length > 0) {
+                    issuesByIndex[index] = issues;
+                }
+            });
+
+            duplicateMap.forEach((indexes) => {
+                if (indexes.length > 1) {
+                    indexes.forEach((idx) => {
+                        if (!issuesByIndex[idx]) issuesByIndex[idx] = [];
+                        issuesByIndex[idx].push('重複予定');
+                    });
+                }
+            });
+
+            return {
+                issuesByIndex,
+                invalidIndexes: Object.keys(issuesByIndex).map(Number)
+            };
+        },
+
+        getChangedCount() {
+            const snapshotMap = new Map(
+                (this.originalDraftSnapshot || []).map(item => [
+                    item.scheduleId || `new-${item.userId}-${item.type}-${item.scheduledTime}`,
+                    item
+                ])
+            );
+
+            let changed = 0;
+            this.draftSchedules.forEach(item => {
+                const key = item.scheduleId || `new-${item.userId}-${item.type}-${item.scheduledTime}`;
+                const prev = snapshotMap.get(key);
+                if (!prev) {
+                    changed += 1;
+                    return;
+                }
+                const isSame = prev.userId === item.userId
+                    && prev.type === item.type
+                    && prev.scheduledTime === item.scheduledTime
+                    && (prev.vehicleId || '') === (item.vehicleId || '');
+                if (!isSame) changed += 1;
+            });
+
+            const deleted = Math.max((this.originalDraftSnapshot || []).length - this.draftSchedules.length, 0);
+            return changed + deleted;
+        },
+
+        renderEditorSummary(validation) {
+            const summary = document.getElementById('editor-summary');
+            if (!summary) return;
+
+            const totalCount = this.draftSchedules.length;
+            const unassignedCount = this.draftSchedules.filter(s => !s.vehicleId).length;
+            const changedCount = this.getChangedCount();
+            const errorCount = validation.invalidIndexes.length;
+
+            summary.innerHTML = [
+                `<span>総件数: <strong>${totalCount}</strong></span>`,
+                `<span>未設定件数: <strong>${unassignedCount}</strong></span>`,
+                `<span>変更件数: <strong>${changedCount}</strong></span>`,
+                `<span>エラー件数: <strong>${errorCount}</strong></span>`
+            ].join('');
         },
 
         renderEditorTable() {
@@ -796,12 +961,31 @@ const AdminManager = {
             tbody.innerHTML = '';
 
             const vehicles = Store.data.vehicles || [];
-            const users = Store.data.users || []; // Need facility filter?
-            // Ideally filter users by facility of course.
-            // But for now show all active.
+            const users = Store.data.users || [];
+            const validation = this.getDraftValidation();
+            const filtered = this.getFilteredDraftSchedules();
+            this.renderEditorSummary(validation);
 
-            this.draftSchedules.forEach((item, index) => {
+            if (filtered.length === 0) {
                 const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 5;
+                td.className = 'text-center';
+                td.textContent = '条件に一致する予定がありません';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                return;
+            }
+
+            filtered.forEach(({ item, index }) => {
+                const tr = document.createElement('tr');
+                tr.dataset.rowIndex = String(index);
+
+                const rowIssues = validation.issuesByIndex[index] || [];
+                if (rowIssues.length > 0) {
+                    tr.classList.add('editor-row-error');
+                    tr.title = rowIssues.join(' / ');
+                }
 
                 // Time
                 const timeTd = document.createElement('td');
@@ -831,7 +1015,6 @@ const AdminManager = {
                 // User
                 const userTd = document.createElement('td');
                 userTd.dataset.label = '利用者';
-                // Create Select for User
                 const userSelect = document.createElement('select');
                 const defaultUserOption = document.createElement('option');
                 defaultUserOption.value = '';
@@ -887,11 +1070,15 @@ const AdminManager = {
     async saveBulk() {
             if (!this.currentEditCourseId) return;
 
-            // Validation
-            // Ensure Users are selected
-            const invalid = this.draftSchedules.find(s => !s.userId || !s.scheduledTime);
-            if (invalid) {
-                alert('利用者と時間は必須です');
+            const validation = this.getDraftValidation();
+            if (validation.invalidIndexes.length > 0) {
+                this.renderEditorTable();
+                const firstInvalid = validation.invalidIndexes[0];
+                const errorRow = document.querySelector(`#editor-tbody tr[data-row-index="${firstInvalid}"]`);
+                if (errorRow) {
+                    errorRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                alert('必須不足または重複がある行があります。エラー行を確認してください。');
                 return;
             }
 
@@ -899,10 +1086,8 @@ const AdminManager = {
 
             UI.showLoading(true);
             try {
-                // Prepare payload
-                // Map draft fields to backend expected keys
                 const payloadSchedules = this.draftSchedules.map((s, i) => ({
-                    scheduleId: s.scheduleId, // Null for new
+                    scheduleId: s.scheduleId,
                     userId: s.userId,
                     userName: s.userName,
                     type: s.type,
@@ -910,10 +1095,6 @@ const AdminManager = {
                     vehicleId: s.vehicleId,
                     vehicleName: s.vehicleName,
                     routeOrder: i + 1,
-                    // facilityId? We need it for new items.
-                    // Assuming course has facilityId.
-                    // We can't get it easily from here without looking up Course Object.
-                    // Let's look it up.
                     facilityId: this.getFacilityIdForCourse(this.currentEditCourseId)
                 }));
 
@@ -924,7 +1105,7 @@ const AdminManager = {
                 });
 
                 UI.toast('保存しました');
-                this.refreshData(); // Reloads real data
+                this.refreshData();
             } catch (e) {
                 console.error(e);
                 alert('保存失敗: ' + e.message);

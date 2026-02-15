@@ -691,6 +691,46 @@ textarea {
     color: var(--text-sub);
 }
 
+.editor-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.88rem;
+    color: var(--text-sub);
+}
+
+.editor-filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.editor-filter-bar .input-lg {
+    margin-top: 0;
+    min-width: 150px;
+    flex: 1;
+}
+
+.editor-filter-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.86rem;
+    color: var(--text-sub);
+}
+
+.editor-row-error td {
+    background: #fef2f2;
+}
+
+.editor-row-error:hover td,
+.editor-row-error:focus-within td {
+    background: #fee2e2;
+}
+
 .sticky-actions {
     margin-top: 1.5rem;
     position: sticky;
@@ -790,6 +830,12 @@ textarea {
 .master-type-select {
     flex: 1;
     min-width: 150px;
+}
+
+.master-search-input {
+    flex: 2;
+    min-width: 200px;
+    margin-top: 0;
 }
 
 .scroll-panel {
@@ -955,5 +1001,16 @@ textarea {
 
     .editor-table td[data-label="操作"]::before {
         margin-right: auto;
+    }
+
+    .editor-summary,
+    .editor-filter-bar {
+        gap: 0.4rem;
+    }
+
+    .editor-filter-bar .input-lg,
+    .master-search-input {
+        min-width: 100%;
+        flex: 1 1 100%;
     }
 }
