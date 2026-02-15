@@ -129,6 +129,10 @@ const UI = {
 // ADMIN MANAGER
 const AdminManager = {
     networkListenersBound: false,
+    currentEditCourseId: '',
+    draftSchedules: [],
+    originalDraftFingerprint: '',
+    editFilters: { type: '', user: '', noVehicle: false },
 
     init() {
         this.bindNetworkListeners();
@@ -177,6 +181,28 @@ const AdminManager = {
         if (saveBulkBtn) {
             saveBulkBtn.addEventListener('click', () => {
                 this.saveBulk();
+            });
+        }
+
+        const filterType = document.getElementById('edit-filter-type');
+        const filterUser = document.getElementById('edit-filter-user');
+        const filterNoVehicle = document.getElementById('edit-filter-no-vehicle');
+        if (filterType) {
+            filterType.addEventListener('change', (e) => {
+                this.editFilters.type = e.target.value;
+                this.renderEditorTable();
+            });
+        }
+        if (filterUser) {
+            filterUser.addEventListener('input', (e) => {
+                this.editFilters.user = e.target.value;
+                this.renderEditorTable();
+            });
+        }
+        if (filterNoVehicle) {
+            filterNoVehicle.addEventListener('change', (e) => {
+                this.editFilters.noVehicle = e.target.checked;
+                this.renderEditorTable();
             });
         }
 
@@ -248,6 +274,10 @@ const AdminManager = {
         const select = document.getElementById('master-type-select');
         if (select) {
             select.addEventListener('change', () => this.renderMasterTab());
+        }
+        const masterSearchInput = document.getElementById('master-search-input');
+        if (masterSearchInput) {
+            masterSearchInput.addEventListener('input', () => this.renderMasterTab());
         }
         document.getElementById('btn-master-add').addEventListener('click', () => this.addMasterRow());
         document.getElementById('btn-master-save').addEventListener('click', () => this.saveMaster());
@@ -323,6 +353,14 @@ const AdminManager = {
         if (type === 'vehicle') data = Store.data.vehicles || [];
         if (type === 'course') data = Store.data.courses || [];
         if (type === 'facility') data = Store.data.facilities || [];
+
+        const query = (document.getElementById('master-search-input')?.value || '').trim().toLowerCase();
+        if (query) {
+            data = data.filter(item => def.fields.some(field => {
+                const value = item[field.key];
+                return String(value === undefined || value === null ? '' : value).toLowerCase().includes(query);
+            }));
+        }
 
         // Clone for draft (if we want safely, but direct render is easier for now)
         // We will read from DOM on save.
@@ -640,6 +678,7 @@ const AdminManager = {
         if (!courseId) {
             document.getElementById('editor-container').classList.add('hidden');
             document.getElementById('editor-empty').classList.remove('hidden');
+            this.updateEditorSummary();
             return;
         }
 
@@ -661,6 +700,7 @@ const AdminManager = {
 
             // Deep copy for draft
             this.draftSchedules = schedules.map(s => ({ ...s }));
+            this.originalDraftFingerprint = this.buildScheduleFingerprint(this.draftSchedules);
         }
 
         this.renderEditorTable();
@@ -745,6 +785,7 @@ const AdminManager = {
                     };
                 });
 
+                this.originalDraftFingerprint = this.buildScheduleFingerprint([]);
                 UI.toast('テンプレートを展開しました');
                 this.renderEditorTable();
 
@@ -776,17 +817,82 @@ const AdminManager = {
 
         updateRow(index, field, value) {
             const item = this.draftSchedules[index];
+            if (!item) return;
             item[field] = value;
 
-            // Side effects
             if (field === 'userId') {
-                const u = Store.data.users.find(User => User['利用者ID'] === value);
+                const u = (Store.data.users || []).find(user => user['利用者ID'] === value);
                 item.userName = u ? u['氏名'] : '';
             }
             if (field === 'vehicleId') {
-                const v = Store.data.vehicles.find(Veh => Veh['車両ID'] === value);
+                const v = (Store.data.vehicles || []).find(veh => veh['車両ID'] === value);
                 item.vehicleName = v ? v['車両名'] : '';
             }
+
+            this.renderEditorTable();
+        },
+
+        getFilteredDraftSchedules() {
+            const typeFilter = this.editFilters.type;
+            const userFilter = (this.editFilters.user || '').trim().toLowerCase();
+            const noVehicleFilter = this.editFilters.noVehicle;
+
+            return this.draftSchedules
+                .map((item, index) => ({ item, index }))
+                .filter(({ item }) => {
+                    if (typeFilter && item.type !== typeFilter) return false;
+                    if (noVehicleFilter && item.vehicleId) return false;
+                    if (userFilter) {
+                        const userName = item.userName || ((Store.data.users || []).find(u => u['利用者ID'] === item.userId)?.['氏名'] || '');
+                        if (!String(userName).toLowerCase().includes(userFilter)) return false;
+                    }
+                    return true;
+                });
+        },
+
+        normalizeScheduleForFingerprint(item) {
+            return {
+                userId: item.userId || '',
+                type: item.type || '',
+                scheduledTime: item.scheduledTime || '',
+                vehicleId: item.vehicleId || ''
+            };
+        },
+
+        buildScheduleFingerprint(schedules) {
+            return JSON.stringify((schedules || []).map(s => this.normalizeScheduleForFingerprint(s)));
+        },
+
+        getRowErrors(index) {
+            const row = this.draftSchedules[index];
+            if (!row) return [];
+            const errors = [];
+
+            if (!row.userId) errors.push('利用者未選択');
+            if (!row.scheduledTime) errors.push('時刻未入力');
+
+            const duplicate = this.draftSchedules.some((target, targetIndex) => {
+                if (targetIndex === index) return false;
+                return target.userId && row.userId && target.userId === row.userId && target.type === row.type && target.scheduledTime === row.scheduledTime;
+            });
+            if (duplicate) errors.push('重複（同一利用者・種別・時刻）');
+
+            return errors;
+        },
+
+        updateEditorSummary() {
+            const total = this.draftSchedules.length;
+            const unset = this.draftSchedules.filter(s => !s.userId || !s.scheduledTime || !s.vehicleId).length;
+            const currentFingerprint = this.buildScheduleFingerprint(this.draftSchedules);
+            const baseline = this.originalDraftFingerprint || this.buildScheduleFingerprint([]);
+            const changed = currentFingerprint === baseline ? 0 : total;
+
+            const totalEl = document.getElementById('summary-total');
+            const unsetEl = document.getElementById('summary-unset');
+            const changedEl = document.getElementById('summary-changed');
+            if (totalEl) totalEl.textContent = String(total);
+            if (unsetEl) unsetEl.textContent = String(unset);
+            if (changedEl) changedEl.textContent = String(changed);
         },
 
         renderEditorTable() {
@@ -794,14 +900,20 @@ const AdminManager = {
             tbody.innerHTML = '';
 
             const vehicles = Store.data.vehicles || [];
-            const users = Store.data.users || []; // Need facility filter?
-            // Ideally filter users by facility of course.
-            // But for now show all active.
+            const users = Store.data.users || [];
 
-            this.draftSchedules.forEach((item, index) => {
+            const filteredRows = this.getFilteredDraftSchedules();
+            filteredRows.forEach(({ item, index }) => {
                 const tr = document.createElement('tr');
+                tr.dataset.rowIndex = String(index);
 
-                // Time
+                const rowErrors = this.getRowErrors(index);
+                if (rowErrors.length > 0) {
+                    tr.style.background = '#fef2f2';
+                    tr.style.outline = '1px solid #fecaca';
+                    tr.title = rowErrors.join(' / ');
+                }
+
                 const timeTd = document.createElement('td');
                 const timeInput = document.createElement('input');
                 timeInput.type = 'time';
@@ -810,7 +922,6 @@ const AdminManager = {
                 timeTd.appendChild(timeInput);
                 tr.appendChild(timeTd);
 
-                // Type
                 const typeTd = document.createElement('td');
                 const typeSelect = document.createElement('select');
                 ['迎え', '送り'].forEach(typeLabel => {
@@ -824,9 +935,7 @@ const AdminManager = {
                 typeTd.appendChild(typeSelect);
                 tr.appendChild(typeTd);
 
-                // User
                 const userTd = document.createElement('td');
-                // Create Select for User
                 const userSelect = document.createElement('select');
                 const defaultUserOption = document.createElement('option');
                 defaultUserOption.value = '';
@@ -841,9 +950,15 @@ const AdminManager = {
                 });
                 userSelect.addEventListener('change', (e) => this.updateRow(index, 'userId', e.target.value));
                 userTd.appendChild(userSelect);
+                if (rowErrors.some(err => err.includes('利用者'))) {
+                    const errorHint = document.createElement('div');
+                    errorHint.style.fontSize = '0.72rem';
+                    errorHint.style.color = '#b91c1c';
+                    errorHint.textContent = '利用者を選択してください';
+                    userTd.appendChild(errorHint);
+                }
                 tr.appendChild(userTd);
 
-                // Vehicle
                 const vehicleTd = document.createElement('td');
                 const vehSelect = document.createElement('select');
                 const defaultVehicleOption = document.createElement('option');
@@ -861,7 +976,6 @@ const AdminManager = {
                 vehicleTd.appendChild(vehSelect);
                 tr.appendChild(vehicleTd);
 
-                // Action
                 const actionTd = document.createElement('td');
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn-icon';
@@ -871,20 +985,42 @@ const AdminManager = {
                 deleteBtn.appendChild(deleteIcon);
                 deleteBtn.addEventListener('click', () => this.removeRow(index));
                 actionTd.appendChild(deleteBtn);
+                if (rowErrors.some(err => err.includes('重複'))) {
+                    const dupHint = document.createElement('div');
+                    dupHint.style.fontSize = '0.72rem';
+                    dupHint.style.color = '#b91c1c';
+                    dupHint.textContent = '重複あり';
+                    actionTd.appendChild(dupHint);
+                }
                 tr.appendChild(actionTd);
 
                 tbody.appendChild(tr);
             });
+
+            if (filteredRows.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 5;
+                td.style.textAlign = 'center';
+                td.style.color = '#999';
+                td.style.padding = '1rem';
+                td.textContent = '条件に一致する行がありません';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            }
+
+            this.updateEditorSummary();
         },
 
-    async saveBulk() {
+        async saveBulk() {
             if (!this.currentEditCourseId) return;
 
-            // Validation
-            // Ensure Users are selected
-            const invalid = this.draftSchedules.find(s => !s.userId || !s.scheduledTime);
-            if (invalid) {
-                alert('利用者と時間は必須です');
+            const invalidRowIndex = this.draftSchedules.findIndex((_, index) => this.getRowErrors(index).length > 0);
+            if (invalidRowIndex >= 0) {
+                this.renderEditorTable();
+                const rowEl = document.querySelector(`#editor-tbody tr[data-row-index="${invalidRowIndex}"]`);
+                if (rowEl) rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                alert('必須項目不足または重複があります。エラー行を確認してください。');
                 return;
             }
 
@@ -892,10 +1028,8 @@ const AdminManager = {
 
             UI.showLoading(true);
             try {
-                // Prepare payload
-                // Map draft fields to backend expected keys
                 const payloadSchedules = this.draftSchedules.map((s, i) => ({
-                    scheduleId: s.scheduleId, // Null for new
+                    scheduleId: s.scheduleId,
                     userId: s.userId,
                     userName: s.userName,
                     type: s.type,
@@ -903,10 +1037,6 @@ const AdminManager = {
                     vehicleId: s.vehicleId,
                     vehicleName: s.vehicleName,
                     routeOrder: i + 1,
-                    // facilityId? We need it for new items.
-                    // Assuming course has facilityId.
-                    // We can't get it easily from here without looking up Course Object.
-                    // Let's look it up.
                     facilityId: this.getFacilityIdForCourse(this.currentEditCourseId)
                 }));
 
@@ -917,7 +1047,8 @@ const AdminManager = {
                 });
 
                 UI.toast('保存しました');
-                this.refreshData(); // Reloads real data
+                this.originalDraftFingerprint = this.buildScheduleFingerprint(this.draftSchedules);
+                this.refreshData();
             } catch (e) {
                 console.error(e);
                 alert('保存失敗: ' + e.message);

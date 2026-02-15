@@ -70,6 +70,16 @@
                 <div class="card admin-card">
                     <h3>予定の編集 (一括モード)</h3>
 
+                    <div id="editor-summary-bar"
+                        style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; font-size:0.85rem;">
+                        <span style="background:#eef2ff; color:#4338ca; padding:0.35rem 0.6rem; border-radius:999px;">総件数: <strong
+                                id="summary-total">0</strong></span>
+                        <span style="background:#fff7ed; color:#c2410c; padding:0.35rem 0.6rem; border-radius:999px;">未設定件数: <strong
+                                id="summary-unset">0</strong></span>
+                        <span style="background:#ecfdf3; color:#166534; padding:0.35rem 0.6rem; border-radius:999px;">変更件数: <strong
+                                id="summary-changed">0</strong></span>
+                    </div>
+
                     <!-- 1. Select Course -->
                     <div class="form-group">
                         <label>コース選択</label>
@@ -93,6 +103,20 @@
                             <span id="editor-status-text"
                                 style="font-size:0.9rem; color:#666;">変更内容は「保存」するまで反映されません</span>
                             <button id="btn-add-row" class="btn-text">+ 利用者追加</button>
+                        </div>
+
+                        <div class="editor-filter-bar"
+                            style="display:grid; grid-template-columns: 120px minmax(140px,1fr) auto; gap:0.5rem; margin-bottom:0.75rem;">
+                            <select id="edit-filter-type" class="input-lg" style="min-width:0;">
+                                <option value="">全種別</option>
+                                <option value="迎え">迎えのみ</option>
+                                <option value="送り">送りのみ</option>
+                            </select>
+                            <input id="edit-filter-user" class="input-lg" type="search" placeholder="利用者名で絞り込み">
+                            <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.85rem; white-space:nowrap;">
+                                <input id="edit-filter-no-vehicle" type="checkbox">
+                                車両未設定のみ
+                            </label>
                         </div>
 
                         <div class="table-responsive">
@@ -146,6 +170,9 @@
                         <button id="btn-master-add" class="btn-secondary">+ 新規追加</button>
                         <button id="btn-master-save" class="btn-primary">保存する</button>
                     </div>
+
+                    <input id="master-search-input" type="search" class="input-lg" placeholder="表示中マスタを検索"
+                        style="margin-bottom:0.75rem;">
 
                     <div id="master-table-container" class="table-responsive"
                         style="max-height: 500px; overflow-y:auto;">
