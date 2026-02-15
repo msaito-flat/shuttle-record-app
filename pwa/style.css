@@ -338,6 +338,86 @@ select.input-lg {
     gap: 0.5rem;
 }
 
+/* Card action buttons */
+.btn-action {
+    border: none;
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: transform 0.1s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-action .material-icons-round {
+    font-size: 16px;
+}
+
+.btn-action:hover {
+    filter: brightness(0.95);
+}
+
+.btn-action:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+.btn-action:disabled,
+.btn-action[disabled] {
+    cursor: not-allowed;
+    opacity: 0.65;
+    filter: grayscale(0.1);
+    transform: none;
+}
+
+.btn-action-ride {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.btn-action-drop {
+    background: var(--success-color);
+    color: #fff;
+}
+
+.btn-action-done {
+    background: var(--gray-200);
+    color: var(--gray-800);
+}
+
+.btn-action-neutral {
+    background: #d1d5db;
+    color: #374151;
+}
+
+.step-chips {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.step-chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-sub);
+    background: var(--gray-100);
+    border-radius: var(--radius-full);
+    padding: 0.15rem 0.5rem;
+    white-space: nowrap;
+}
+
+.step-chip-next {
+    background: #ede9fe;
+    color: var(--primary-dark);
+}
+
 .check-btn {
     width: 48px;
     height: 48px;
