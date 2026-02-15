@@ -407,29 +407,6 @@ select.input-lg {
     text-align: center;
 }
 
-.step-chips {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.25rem;
-}
-
-.step-chip {
-    display: inline-flex;
-    align-items: center;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--text-sub);
-    background: var(--gray-100);
-    border-radius: 999px;
-    padding: 0.15rem 0.5rem;
-    white-space: nowrap;
-}
-
-.step-chip-next {
-    background: #ede9fe;
-    color: var(--primary-color);
-}
 
 .check-btn {
     width: 48px;
