@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>管理者ダッシュボード</title>
+    <meta name="theme-color" content="#4f46e5">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-message">保存しました</span>
+    </div>
+
+    <!-- Admin Dashboard View -->
+    <section id="view-admin" class="view">
+        <header class="app-header">
+            <div class="header-left">
+                <a href="index.html" class="icon-btn"
+                    style="text-decoration:none; display:flex; align-items:center; color:inherit;">
+                    <span class="material-icons-round">arrow_back</span>
+                </a>
+                <div class="header-info">
+                    <h2>管理者ダッシュボード</h2>
+                    <span id="admin-date-display">2026-02-14</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <input type="date" id="admin-dashboard-date" class="date-picker-sm">
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" data-admin-tab="status">運行状況</button>
+            <button class="tab" data-admin-tab="edit">予定編集</button>
+            <button class="tab" data-admin-tab="template">テンプレート</button>
+        </div>
+
+        <main class="content-scroll">
+            <!-- Tab: Status -->
+            <div id="admin-tab-status" class="admin-tab-content">
+                <div id="course-status-list" class="status-list">
+                    <!-- Progress bars injected here -->
+                </div>
+            </div>
+
+            <!-- Tab: Edit -->
+            <div id="admin-tab-edit" class="admin-tab-content hidden">
+                <div class="card admin-card">
+                    <h3>本日の予定一覧</h3>
+                    <div id="admin-schedule-list" class="admin-schedule-list">
+                        <!-- Editable items injected here -->
+                    </div>
+                    <button id="btn-add-schedule-adhoc" class="btn-text" style="color:var(--text-sub);">
+                        + 予定を追加
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Template -->
+            <div id="admin-tab-template" class="admin-tab-content hidden">
+                <div class="card admin-card">
+                    <h3>テンプレートから一括作成</h3>
+                    <div class="form-group">
+                        <label>コース</label>
+                        <select id="template-course-select" class="input-lg"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>テンプレート</label>
+                        <select id="template-select" class="input-lg"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>車両割り当て (任意)</label>
+                        <select id="template-vehicle-select" class="input-lg"></select>
+                    </div>
+                    <button id="btn-apply-template" class="btn-primary">この内容で予定を作成</button>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- Scripts -->
+    <script src="common.js"></script>
+    <script src="admin.js"></script>
+</body>
+
+</html>

@@ -1,10 +1,15 @@
-const CACHE_NAME = 'kirari-shuttle-v5';
+const CACHE_NAME = 'kirari-shuttle-v6';
 const ASSETS = [
     './',
     './index.html',
+    './admin.html',
     './style.css',
+    './common.js',
     './app.js',
+    './admin.js',
     './manifest.json',
+    './icons/icon-192.png',
+    './icons/icon-512.png',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap',
     'https://fonts.googleapis.com/icon?family=Material+Icons+Round'
 ];
