@@ -208,6 +208,10 @@ const UI = {
         // No listener needed for <a href>
 
         this.updateConnectionStatus();
+
+        // Show Version
+        const vEl = document.getElementById('app-version');
+        if (vEl) vEl.textContent = `(${APP_VERSION})`;
     },
 
     renderFacilities() {

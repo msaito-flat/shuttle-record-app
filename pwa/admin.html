@@ -55,6 +55,7 @@
             <button class="tab active" data-admin-tab="status">運行状況</button>
             <button class="tab" data-admin-tab="edit">予定編集</button>
             <button class="tab" data-admin-tab="template">テンプレート</button>
+            <button class="tab" data-admin-tab="master">マスタ管理</button>
         </div>
 
         <main class="content-scroll">
@@ -95,6 +96,23 @@
                         <select id="template-vehicle-select" class="input-lg"></select>
                     </div>
                     <button id="btn-apply-template" class="btn-primary">この内容で予定を作成</button>
+                </div>
+            </div>
+
+            <!-- Tab: Master -->
+            <div id="admin-tab-master" class="admin-tab-content hidden">
+                <div class="card admin-card">
+                    <h3>マスタデータ管理</h3>
+                    <div class="form-group">
+                        <select id="master-type-select" class="input-lg">
+                            <option value="vehicle">車両マスタ</option>
+                            <option value="user">利用者マスタ</option>
+                        </select>
+                    </div>
+                    <div id="master-list" class="user-selection-list" style="max-height: 400px;">
+                        <!-- Master items injected here -->
+                    </div>
+                    <button id="btn-add-master" class="btn-secondary">+ 新規登録 (未実装)</button>
                 </div>
             </div>
         </main>

@@ -115,7 +115,10 @@ const AdminManager = {
                 this.applyTemplate();
             });
         }
+
+        this.initMasterTab();
     },
+
 
     open() {
         // Initial render
@@ -133,6 +136,7 @@ const AdminManager = {
 
         if (tabName === 'status') this.renderStatus();
         if (tabName === 'edit') this.renderEditList();
+        if (tabName === 'master') this.renderMasterTab();
     },
 
     switchTab(tabName) {
@@ -148,7 +152,47 @@ const AdminManager = {
         if (tabName === 'status') this.renderStatus();
         if (tabName === 'edit') this.renderEditList();
         if (tabName === 'template') this.renderTemplateTab();
+        if (tabName === 'master') this.renderMasterTab();
     },
+
+    initMasterTab() {
+        const select = document.getElementById('master-type-select');
+        if (select) {
+            select.addEventListener('change', () => this.renderMasterTab());
+        }
+    },
+
+    renderMasterTab() {
+        const type = document.getElementById('master-type-select').value;
+        const list = document.getElementById('master-list');
+        list.innerHTML = '';
+
+        let data = [];
+        if (type === 'vehicle') data = Store.data.vehicles || [];
+        if (type === 'user') data = Store.data.users || [];
+
+        if (data.length === 0) {
+            list.innerHTML = '<p class="text-center">データがありません</p>';
+            return;
+        }
+
+        data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'user-item';
+            div.style.justifyContent = 'space-between';
+
+            let label = '';
+            if (type === 'vehicle') label = item['車両名'];
+            if (type === 'user') label = item['利用者名'];
+
+            div.innerHTML = `
+                <span>${label}</span>
+                <button class="btn-text" onclick="alert('編集機能はまだ実装されていません')">編集</button>
+            `;
+            list.appendChild(div);
+        });
+    },
+
 
     renderStatus() {
         const container = document.getElementById('course-status-list');
