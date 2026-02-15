@@ -5,6 +5,31 @@
 
 // SYNC MANAGER (Driver only for now)
 const SyncManager = {
+    createQueueId() {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+        return `q-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    },
+
+    migrateLegacyPendingRecords() {
+        if (!Array.isArray(Store.data.pendingRecords) || Store.data.pendingRecords.length === 0) return;
+
+        let migratedCount = 0;
+        Store.data.pendingRecords = Store.data.pendingRecords.map(record => {
+            if (record.queueId) return record;
+            migratedCount += 1;
+            const queueId = this.createQueueId();
+            console.debug(`[SyncManager] migrated legacy record queueId=${queueId}`);
+            return { ...record, queueId };
+        });
+
+        if (migratedCount > 0) {
+            Store.save();
+            console.debug(`[SyncManager] migration completed migratedCount=${migratedCount}`);
+        }
+    },
+
     async sync() {
         if (Store.status.isOffline || Store.data.pendingRecords.length === 0) return;
 
@@ -13,12 +38,14 @@ const SyncManager = {
 
         for (const record of queue) {
             try {
+                console.debug(`[SyncManager] syncing queueId=${record.queueId}`);
                 await API.post('checkIn', record);
                 // Success: remove from queue
-                Store.data.pendingRecords = Store.data.pendingRecords.filter(r => r.timestamp !== record.timestamp);
+                Store.data.pendingRecords = Store.data.pendingRecords.filter(r => r.queueId !== record.queueId);
                 Store.save();
+                console.debug(`[SyncManager] synced queueId=${record.queueId}`);
             } catch (e) {
-                console.error('Sync failed for record', record, e);
+                console.error(`[SyncManager] sync failed queueId=${record.queueId}`, e);
                 // Stop syncing on error if network issue
                 if (!navigator.onLine) break;
             }
@@ -31,9 +58,15 @@ const SyncManager = {
     },
 
     pushRecord(record) {
-        // Add timestamp for unique ID in queue
-        record.timestamp = Date.now();
-        Store.data.pendingRecords.push(record);
+        const queueId = this.createQueueId();
+        const queuedRecord = {
+            ...record,
+            queueId,
+            timestamp: Date.now()
+        };
+        console.debug(`[SyncManager] queued queueId=${queueId}`);
+
+        Store.data.pendingRecords.push(queuedRecord);
         Store.save();
         UI.updateSyncStatus();
 
@@ -46,6 +79,7 @@ const SyncManager = {
 const DataManager = {
     async init() {
         Store.load();
+        SyncManager.migrateLegacyPendingRecords();
 
         // Cached data first for faster first paint
         UI.renderFacilities();
