@@ -9,25 +9,32 @@ const SyncManager = {
         if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
             return crypto.randomUUID();
         }
+        if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+            const bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+            return `q-${hex}`;
+        }
         return `q-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
     },
 
     migrateLegacyPendingRecords() {
-        if (!Array.isArray(Store.data.pendingRecords) || Store.data.pendingRecords.length === 0) return;
+        if (Store.status.pendingRecordsQueueIdMigrated) return;
 
         let migratedCount = 0;
-        Store.data.pendingRecords = Store.data.pendingRecords.map(record => {
-            if (record.queueId) return record;
-            migratedCount += 1;
-            const queueId = this.createQueueId();
-            console.debug(`[SyncManager] migrated legacy record queueId=${queueId}`);
-            return { ...record, queueId };
-        });
-
-        if (migratedCount > 0) {
-            Store.save();
-            console.debug(`[SyncManager] migration completed migratedCount=${migratedCount}`);
+        if (Array.isArray(Store.data.pendingRecords) && Store.data.pendingRecords.length > 0) {
+            Store.data.pendingRecords = Store.data.pendingRecords.map(record => {
+                if (record.queueId) return record;
+                migratedCount += 1;
+                const queueId = this.createQueueId();
+                console.debug(`[SyncManager] migrated queueId=${queueId}`);
+                return { ...record, queueId };
+            });
         }
+
+        Store.status.pendingRecordsQueueIdMigrated = true;
+        Store.save();
+        console.debug(`[SyncManager] migration marked queueId=done migratedCount=${migratedCount}`);
     },
 
     async sync() {
