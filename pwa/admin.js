@@ -364,6 +364,7 @@ const AdminManager = {
 
         def.fields.forEach(f => {
             const td = document.createElement('td');
+            td.dataset.label = f.label;
             const val = item[f.key];
 
             if (f.readonly) {
@@ -401,6 +402,7 @@ const AdminManager = {
 
         // Action
         const tdAction = document.createElement('td');
+        tdAction.dataset.label = '操作';
         const btnDel = document.createElement('button');
         btnDel.className = 'btn-icon';
         btnDel.innerHTML = '<span class="material-icons-round">delete</span>';
@@ -803,6 +805,7 @@ const AdminManager = {
 
                 // Time
                 const timeTd = document.createElement('td');
+                timeTd.dataset.label = '時間';
                 const timeInput = document.createElement('input');
                 timeInput.type = 'time';
                 timeInput.value = item.scheduledTime || '';
@@ -812,6 +815,7 @@ const AdminManager = {
 
                 // Type
                 const typeTd = document.createElement('td');
+                typeTd.dataset.label = '種別';
                 const typeSelect = document.createElement('select');
                 ['迎え', '送り'].forEach(typeLabel => {
                     const option = document.createElement('option');
@@ -826,6 +830,7 @@ const AdminManager = {
 
                 // User
                 const userTd = document.createElement('td');
+                userTd.dataset.label = '利用者';
                 // Create Select for User
                 const userSelect = document.createElement('select');
                 const defaultUserOption = document.createElement('option');
@@ -845,6 +850,7 @@ const AdminManager = {
 
                 // Vehicle
                 const vehicleTd = document.createElement('td');
+                vehicleTd.dataset.label = '車両';
                 const vehSelect = document.createElement('select');
                 const defaultVehicleOption = document.createElement('option');
                 defaultVehicleOption.value = '';
@@ -863,6 +869,7 @@ const AdminManager = {
 
                 // Action
                 const actionTd = document.createElement('td');
+                actionTd.dataset.label = '操作';
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'btn-icon';
                 const deleteIcon = document.createElement('span');
