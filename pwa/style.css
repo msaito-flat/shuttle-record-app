@@ -787,6 +787,17 @@ textarea {
     white-space: nowrap;
 }
 
+.editor-vehicle-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.editor-vehicle-header .admin-btn-quiet {
+    white-space: nowrap;
+}
+
 .editor-table tr:hover td,
 .editor-table tr:focus-within td {
     background: #f8fbff;

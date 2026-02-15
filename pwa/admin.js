@@ -181,6 +181,13 @@ const AdminManager = {
             });
         }
 
+        const copyFirstVehicleBtn = document.getElementById('btn-copy-first-vehicle');
+        if (copyFirstVehicleBtn) {
+            copyFirstVehicleBtn.addEventListener('click', () => {
+                this.copyFirstVehicleToAllRows();
+            });
+        }
+
         const saveBulkBtn = document.getElementById('btn-save-bulk');
         if (saveBulkBtn) {
             saveBulkBtn.addEventListener('click', () => {
@@ -857,6 +864,31 @@ const AdminManager = {
             }
 
             this.renderEditorTable();
+        },
+
+        copyFirstVehicleToAllRows() {
+            if (!this.draftSchedules.length) {
+                UI.toast('予定行がありません');
+                return;
+            }
+
+            const firstVehicleId = this.draftSchedules[0].vehicleId || '';
+            if (!firstVehicleId) {
+                UI.toast('1行目の車両を選択してください');
+                return;
+            }
+
+            const v = (Store.data.vehicles || []).find(Veh => Veh['車両ID'] === firstVehicleId);
+            const firstVehicleName = v ? v['車両名'] : '';
+
+            this.draftSchedules = this.draftSchedules.map(item => ({
+                ...item,
+                vehicleId: firstVehicleId,
+                vehicleName: firstVehicleName
+            }));
+
+            this.renderEditorTable();
+            UI.toast('1行目の車両を全行へコピーしました');
         },
 
         getFilteredDraftSchedules() {
