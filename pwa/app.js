@@ -47,33 +47,33 @@ const DataManager = {
     async init() {
         Store.load();
         UI.renderFacilities();
-        // UI.renderVehicles(); // Not currently used in HTML
 
         if (navigator.onLine) {
             try {
-                // Fetch Facilities FIRST
-                const facilities = await API.fetch('getFacilities');
-                Store.data.facilities = facilities;
-                Store.save();
-                UI.renderFacilities(); // Update UI immediately
+                // Parallel Fetch for Performance
+                const [facilities, courses, vehicles, users] = await Promise.all([
+                    API.fetch('getFacilities'),
+                    API.fetch('getCourses'), // Fetch ALL courses
+                    API.fetch('getVehicles'),
+                    API.fetch('getUsers')
+                ]);
 
-                const courses = await API.fetch('getCourses', {
-                    facilityId: Store.status.currentFacility
-                });
+                Store.data.facilities = facilities;
                 Store.data.courses = courses;
+                Store.data.vehicles = vehicles;
+                Store.data.users = users;
+
+                Store.save();
+
+                // Update UI
+                UI.renderFacilities();
+                UI.renderCourses();
 
                 // Pre-load templates if course selected
                 if (Store.status.currentCourse) {
                     await this.getTemplates();
                 }
 
-                // Vehicles are still needed for assignment
-                const vehicles = await API.fetch('getVehicles');
-                Store.data.vehicles = vehicles;
-
-                Store.save();
-                UI.renderFacilities();
-                UI.renderCourses();
             } catch (e) {
                 console.warn('Init fetch failed', e);
             }
@@ -83,19 +83,10 @@ const DataManager = {
         }
     },
 
+    // Optimized: Uses pre-loaded data
     async getCourses() {
-        if (navigator.onLine) {
-            try {
-                const courses = await API.fetch('getCourses', {
-                    facilityId: Store.status.currentFacility
-                });
-                Store.data.courses = courses;
-                Store.save();
-                UI.renderCourses(); // Re-render logic
-            } catch (e) {
-                console.warn('Fetch courses failed', e);
-            }
-        }
+        // Just re-render, data is already in Store.data.courses (ALL courses)
+        UI.renderCourses();
     },
 
     async getTemplates() {
@@ -134,18 +125,9 @@ const DataManager = {
         }
     },
 
+    // Optimized: Users are pre-loaded
     async getUsers() {
-        if (navigator.onLine) {
-            try {
-                const users = await API.fetch('getUsers', {
-                    facilityId: Store.status.currentFacility
-                });
-                Store.data.users = users;
-                Store.save();
-            } catch (e) {
-                console.warn('Fetch users failed', e);
-            }
-        }
+        // No-op or render if needed
     }
 };
 
@@ -157,6 +139,11 @@ const UI = {
         // Event Listeners
         document.getElementById('setup-facility').addEventListener('change', (e) => {
             Store.status.currentFacility = e.target.value;
+            // Reset course
+            Store.status.currentCourse = null;
+            document.getElementById('btn-start-session').disabled = true;
+            document.getElementById('btn-start-session').style.opacity = '0.5';
+
             Store.save();
             DataManager.getCourses(); // Fetch new courses
         });
@@ -180,8 +167,11 @@ const UI = {
         });
 
         document.getElementById('btn-back-setup').addEventListener('click', () => {
-            document.getElementById('view-main').classList.add('hidden');
-            document.getElementById('view-setup').classList.remove('hidden');
+            history.back(); // Use history back
+        });
+
+        document.getElementById('btn-start-session').addEventListener('click', () => {
+            this.startSession();
         });
 
         document.getElementById('btn-sync').addEventListener('click', () => SyncManager.sync());
@@ -210,8 +200,17 @@ const UI = {
             this.updateConnectionStatus();
         });
 
-        // Setup button to admin page (now a link in HTML, but here logic just in case)
-        // No listener needed for <a href>
+        // History api
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.view === 'main') {
+                document.getElementById('view-setup').classList.add('hidden');
+                document.getElementById('view-main').classList.remove('hidden');
+            } else {
+                // Default / Setup
+                document.getElementById('view-setup').classList.remove('hidden');
+                document.getElementById('view-main').classList.add('hidden');
+            }
+        });
 
         this.updateConnectionStatus();
 
@@ -244,8 +243,6 @@ const UI = {
         const facilityId = Store.status.currentFacility;
         let courses = Store.data.courses || [];
 
-        console.log('Rendering courses for facility:', facilityId);
-
         if (facilityId) {
             courses = courses.filter(c => c['事業所ID'] === facilityId);
         }
@@ -253,6 +250,19 @@ const UI = {
         if (courses.length === 0) {
             container.innerHTML = '<p style="color:var(--text-sub); text-align:center;">コースがありません。<br>管理者に確認してください。</p>';
             return;
+        }
+
+        // Check if current course is valid for this facility
+        if (Store.status.currentCourse) {
+            const exists = courses.find(c => c['コースID'] === Store.status.currentCourse);
+            if (!exists) {
+                Store.status.currentCourse = null;
+                document.getElementById('btn-start-session').disabled = true;
+                document.getElementById('btn-start-session').style.opacity = '0.5';
+            } else {
+                document.getElementById('btn-start-session').disabled = false;
+                document.getElementById('btn-start-session').style.opacity = '1';
+            }
         }
 
         courses.forEach(c => {
@@ -264,7 +274,9 @@ const UI = {
                 Store.save();
                 this.renderCourses(); // Re-render to show selection state
                 DataManager.getTemplates();
-                this.startSession();
+                // Enable button
+                document.getElementById('btn-start-session').disabled = false;
+                document.getElementById('btn-start-session').style.opacity = '1';
             };
             container.appendChild(btn);
         });
@@ -279,6 +291,9 @@ const UI = {
         const cName = c ? c['コース名'] : '';
 
         document.getElementById('header-subtitle').textContent = `${Store.status.currentDate} / ${cName}`;
+
+        // Navigation (Push state)
+        history.pushState({ view: 'main' }, '', '#main');
         document.getElementById('view-setup').classList.add('hidden');
         document.getElementById('view-main').classList.remove('hidden');
     },
@@ -296,9 +311,18 @@ const UI = {
         });
 
         // Tab filter
+        // "Unboarded" (未乗車) => status is null, empty, or '未乗車'
+        if (filterType === 'unboarded') {
+            schedules = schedules.filter(s => !s.status || s.status === '未乗車');
+        }
+        // "Undropped" (未降車) => status is '乗車済' (Boarded but not Dropped)
+        if (filterType === 'undropped') {
+            schedules = schedules.filter(s => s.status === '乗車済');
+        }
+
+        // Old filters just in case (removed from UI but logic kept?)
         if (filterType === 'pickup') schedules = schedules.filter(s => s.type === '迎え');
         if (filterType === 'dropoff') schedules = schedules.filter(s => s.type === '送り');
-        if (filterType === 'unfinished') schedules = schedules.filter(s => !s.status);
 
         if (schedules.length === 0) {
             document.getElementById('empty-state').classList.remove('hidden');
@@ -313,11 +337,19 @@ const UI = {
             const isSkip = s.status === '欠席';
             const isCancel = s.status === 'キャンセル';
 
+            // Note: s.status might be null/empty for 'Unboarded'
+
             let statusClass = '';
             if (isRiding) statusClass = 'status-riding';
             if (isDone) statusClass = 'status-done';
-            if (isSkip) statusClass = 'status-skip';
-            if (isCancel) statusClass = 'status-cancel';
+            if (isSkip) statusClass = 'status-skip'; // Css needs to handle this
+            if (isCancel) statusClass = 'status-cancel'; // Css needs to handle this
+
+            // Absence visual distinction
+            if (isSkip || isCancel) {
+                // Maybe dim the card or add specific border
+                // .status-skip (Gray/Dimmed)
+            }
 
             // Determine Icon
             let actionIcon = 'radio_button_unchecked';
@@ -376,7 +408,19 @@ const UI = {
             s.status = status;
             if (note !== null) s.note = note;
             Store.save();
-            this.renderSchedule(); // Re-render list
+            this.renderSchedule(); // Re-render list to update filters if needed
+
+            // If filter was active, re-render might remove the item (e.g. Unboarded -> Boarded)
+            // User might lose context.
+            // Ideally we keep it but animate out?
+            // For now, simple re-render.
+            // Check current filter
+            // this.renderSchedule(document.querySelector('.tab.active').dataset.filter);
+            // Actually `renderSchedule` above doesn't check tab state unless passed.
+            // Let's pass active tab filter.
+            const activeTab = document.querySelector('.tab.active');
+            const filter = activeTab ? activeTab.dataset.filter : 'all';
+            this.renderSchedule(filter);
 
             // Queue sync
             SyncManager.pushRecord({
@@ -391,7 +435,7 @@ const UI = {
                 attendant: Store.status.currentAttendant
             });
 
-            this.toast('保存しました');
+            this.toast('記録されました');
         }
     },
 

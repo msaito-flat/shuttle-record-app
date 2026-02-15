@@ -71,8 +71,14 @@ function doPost(e) {
       case 'registerSchedule':
         result = registerSchedule(data);
         break;
-      case 'registerScheduleFromTemplate':
-        result = registerScheduleFromTemplate(data);
+      case 'updateSchedule':
+        result = updateSchedule(data);
+        break;
+      case 'deleteSchedule':
+        result = deleteSchedule(data);
+        break;
+      case 'bulkUpdateSchedules':
+        result = bulkUpdateSchedules(data);
         break;
       case 'setup':
         setup();
@@ -317,4 +323,197 @@ function formatTime(date) {
   if (!date) return '';
   if (typeof date === 'string') return date;
   return Utilities.formatDate(date, 'JST', 'HH:mm');
+}
+
+function updateSchedule(payload) {
+  const { scheduleId, time, vehicleId, vehicleName } = payload;
+  if (!scheduleId) throw new Error('Schedule ID is required');
+
+  // Update '送迎予定'
+  // Note: SheetHelper.updateData works by key column.
+  // We want to update specific fields.
+  
+  const updateData = {};
+  if (time) updateData['予定時刻'] = time;
+  if (vehicleId) updateData['車両ID'] = vehicleId;
+  if (vehicleName) updateData['車両名'] = vehicleName;
+  
+  SheetHelper.updateData('送迎予定', '予定ID', scheduleId, updateData);
+  
+  // Also update '送迎記録' if it exists, to keep consistency?
+  // If record exists, it might have its own overrides. 
+  // For now, let's sync the Schedule fields in Record if record exists.
+  const records = SheetHelper.getData('送迎記録');
+  const record = records.find(r => r['予定ID'] === scheduleId);
+  if (record) {
+     SheetHelper.updateData('送迎記録', '予定ID', scheduleId, updateData);
+  }
+
+  return { message: 'Updated', scheduleId };
+}
+
+function deleteSchedule(payload) {
+  const { scheduleId } = payload;
+  if (!scheduleId) throw new Error('Schedule ID is required');
+
+  // Delete from '送迎予定'
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('送迎予定');
+  const data = sh.getDataRange().getValues();
+  // Find row index (1-based), header is row 1
+  // ID is in column A (index 0)
+  
+  // SheetHelper doesn't have deleteRow method exposed directly or easily?
+  // Let's implement simple row finding.
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === scheduleId) {
+       sh.deleteRow(i + 1);
+       break;
+    }
+  }
+  
+  // Delete from '送迎記録' as well
+  const shRec = ss.getSheetByName('送迎記録');
+  const dataRec = shRec.getDataRange().getValues();
+  // Records might have multiple? No, 1:1 usually.
+  // Loop backwards to be safe if multiple
+  for (let i = dataRec.length - 1; i >= 1; i--) {
+    // Record has '予定ID' in col B (index 1)? content says: 
+    // '記録ID', '予定ID'... -> Record ID is col 0, Schedule ID is col 1.
+    // Let's verify header. `SampleData.gs` says:
+    // ensureSheet(ss, '送迎記録', ['記録ID', '予定ID', ...
+    if (dataRec[i][1] === scheduleId) {
+      shRec.deleteRow(i + 1);
+    }
+  }
+
+  return { message: 'Deleted', scheduleId };
+}
+
+function bulkUpdateSchedules(payload) {
+  const { date, courseId, schedules } = payload;
+  if (!date || !courseId || !Array.isArray(schedules)) {
+    throw new Error('Invalid payload for bulk update');
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('送迎予定');
+  const allData = sh.getDataRange().getValues();
+  const headers = allData[0];
+  
+  // Helper to map column name to index
+  const colMap = {};
+  headers.forEach((h, i) => colMap[h] = i);
+  
+  // 1. Find existing schedules for this date & course
+  // We need to store their Row Index to update or delete.
+  // Note: deleting rows shifts indices, so we should delete from bottom up or be careful.
+  // Strategy:
+  // - Identify existing IDs.
+  // - For each payload item:
+  //    - If ID exists -> Update Row.
+  //    - If ID is empty -> Insert Row.
+  // - After processing all payload items, any existing IDs that were NOT in payload -> Delete Row.
+
+  const existingRows = []; // { id, rowIndex (1-based), rowData }
+  for (let i = 1; i < allData.length; i++) {
+    const row = allData[i];
+    const rDate = formatDate(row[colMap['日付']]);
+    const rCourse = row[colMap['コースID']];
+    if (rDate === date && rCourse === courseId) {
+      existingRows.push({
+        id: row[colMap['予定ID']],
+        rowIndex: i + 1,
+        row: row
+      });
+    }
+  }
+
+  const processedIds = new Set();
+  const validFacilityId = existingRows.length > 0 ? existingRows[0].row[colMap['事業所ID']] : (schedules.length > 0 ? schedules[0].facilityId : '');
+  
+  // Note: if creating new, we need facilityId. Payload items should have it, or we infer from somewhere?
+  // Frontend sends facilityId in items? Or we assume course's facility?
+  // Let's assume payload items have basic info or we default to what we know.
+  // Actually, course is tied to facility.
+  
+  // 2. Process Payload
+  schedules.forEach((item, index) => {
+    // fields: scheduleId (optional), userId, userName, type, time, vehicleId, vehicleName, driver, attendant, routeOrder
+    
+    if (item.scheduleId && existingRows.find(r => r.id === item.scheduleId)) {
+      // UPDATE
+      const target = existingRows.find(r => r.id === item.scheduleId);
+      processedIds.add(item.scheduleId);
+      
+      const rowNum = target.rowIndex;
+      // Map updates
+      const updateObj = {};
+      if (item.time) updateObj['予定時刻'] = item.time;
+      if (item.type) updateObj['便種別'] = item.type;
+      if (item.vehicleId) updateObj['車両ID'] = item.vehicleId;
+      if (item.vehicleName) updateObj['車両名'] = item.vehicleName;
+      if (item.driver !== undefined) updateObj['ドライバー'] = item.driver;
+      if (item.attendant !== undefined) updateObj['添乗員'] = item.attendant;
+      if (item.routeOrder) updateObj['ルート順'] = item.routeOrder;
+      
+      // Use SheetHelper.updateData logic but with known row? 
+      // SheetHelper.updateData searches by key. We can use it.
+      SheetHelper.updateData('送迎予定', '予定ID', item.scheduleId, updateObj);
+      
+    } else {
+      // CREATE
+      // Need Facility ID. 
+      // If we don't have it in item, try to find from context.
+      // We can look up Course -> Facility mapping but "CourseMaster" read is needed.
+      // Or just require it in payload.
+      const newItem = {
+        '日付': date,
+        '事業所ID': item.facilityId || validFacilityId, // Fallback
+        '利用者ID': item.userId,
+        '氏名': item.userName,
+        '便種別': item.type,
+        '予定時刻': item.time,
+        'コースID': courseId,
+        '車両ID': item.vehicleId,
+        '車両名': item.vehicleName,
+        'ドライバー': item.driver,
+        '添乗員': item.attendant,
+        'ルート順': item.routeOrder || (index + 1)
+      };
+      const newId = SheetHelper.insertData('送迎予定', newItem, 'S');
+      // No need to track ID for deletion since it's new
+    }
+  });
+
+  // 3. Delete missing
+  // Delete from bottom to top to avoid index shift issues affecting subsequent deletes?
+  // OR: get IDs to delete, then call deleteSchedule?
+  // calling deleteSchedule is cleaner but slower (fetches data each time).
+  // Let's use deleteSchedule logic but efficient? 
+  // For safety and simplicity, let's use the loop but be careful.
+  // Actually, easiest is to collect IDs to delete and assume they are valid.
+  
+  const toDelete = existingRows.filter(r => !processedIds.has(r.id));
+  // Sort by rowIndex descending
+  toDelete.sort((a, b) => b.rowIndex - a.rowIndex);
+  
+  toDelete.forEach(r => {
+    // We can't trust rowIndex if we inserted rows? 
+    // Wait, inserts allow append (at bottom), so existing row indices shouldn't change unless we delete.
+    // So if we delete descending, it's safe.
+    // BUT SheetHelper.insertData appends.
+    // So existing rows are safe.
+    
+    // However, calling `sh.deleteRow` requires valid index.
+    // If we rely on stored rowIndex, need to be sure.
+    // Safe bet: find by ID again or just Delete by ID using deleteSchedule logic.
+    // deleteSchedule searches by ID.
+    // Let's just manually delete here to be sure.
+    
+    // Actually, calling deleteSchedule(id) for each is safer regarding '送迎記録' cleanup.
+    deleteSchedule({ scheduleId: r.id });
+  });
+
+  return { message: 'Bulk update completed', count: schedules.length };
 }

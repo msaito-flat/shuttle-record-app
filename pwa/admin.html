@@ -54,7 +54,6 @@
         <div class="tabs">
             <button class="tab active" data-admin-tab="status">運行状況</button>
             <button class="tab" data-admin-tab="edit">予定編集</button>
-            <button class="tab" data-admin-tab="template">テンプレート</button>
             <button class="tab" data-admin-tab="master">マスタ管理</button>
         </div>
 
@@ -69,33 +68,62 @@
             <!-- Tab: Edit -->
             <div id="admin-tab-edit" class="admin-tab-content hidden">
                 <div class="card admin-card">
-                    <h3>本日の予定一覧</h3>
-                    <div id="admin-schedule-list" class="admin-schedule-list">
-                        <!-- Editable items injected here -->
-                    </div>
-                    <button id="btn-add-schedule-adhoc" class="btn-text" style="color:var(--text-sub);">
-                        + 予定を追加
-                    </button>
-                </div>
-            </div>
+                    <h3>予定の編集 (一括モード)</h3>
 
-            <!-- Tab: Template -->
-            <div id="admin-tab-template" class="admin-tab-content hidden">
-                <div class="card admin-card">
-                    <h3>テンプレートから一括作成</h3>
+                    <!-- 1. Select Course -->
                     <div class="form-group">
-                        <label>コース</label>
-                        <select id="template-course-select" class="input-lg"></select>
+                        <label>コース選択</label>
+                        <select id="edit-course-select" class="input-lg"></select>
                     </div>
-                    <div class="form-group">
-                        <label>テンプレート</label>
-                        <select id="template-select" class="input-lg"></select>
+
+                    <!-- 2. Import Template (Optional) -->
+                    <div class="template-import-area"
+                        style="background:#f8f9fa; padding:1rem; border-radius:8px; margin-bottom:1rem;">
+                        <label style="font-size:0.9rem; font-weight:bold; color:#666;">テンプレートから読み込み (上書き)</label>
+                        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                            <select id="edit-template-select" class="input-lg" style="flex:1;"></select>
+                            <button id="btn-load-template" class="btn-secondary">展開</button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>車両割り当て (任意)</label>
-                        <select id="template-vehicle-select" class="input-lg"></select>
+
+                    <!-- 3. Editor Table -->
+                    <div id="editor-container" class="hidden">
+                        <div class="editor-toolbar"
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                            <span id="editor-status-text"
+                                style="font-size:0.9rem; color:#666;">変更内容は「保存」するまで反映されません</span>
+                            <button id="btn-add-row" class="btn-text">+ 利用者追加</button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="editor-table">
+                                <thead>
+                                    <tr>
+                                        <!-- <th>順</th> -->
+                                        <th>時間</th>
+                                        <th>種別</th>
+                                        <th>利用者</th>
+                                        <th>車両</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="editor-tbody">
+                                    <!-- Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="form-actions" style="margin-top:1.5rem; position:sticky; bottom:1rem; z-index:10;">
+                            <button id="btn-save-bulk" class="btn-primary"
+                                style="width:100%; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">
+                                この内容で保存する
+                            </button>
+                        </div>
                     </div>
-                    <button id="btn-apply-template" class="btn-primary">この内容で予定を作成</button>
+
+                    <div id="editor-empty" class="text-center" style="padding:2rem; color:#999;">
+                        コースを選択してください
+                    </div>
                 </div>
             </div>
 
@@ -117,6 +145,29 @@
             </div>
         </main>
     </section>
+
+    <!-- Edit Modal -->
+    <div id="modal-edit" class="modal hidden">
+        <div class="modal-content">
+            <h3>予定の編集</h3>
+            <div class="form-group">
+                <label>利用者名</label>
+                <div id="edit-user-name" style="font-weight:bold; padding:0.5rem 0;"></div>
+            </div>
+            <div class="form-group">
+                <label>予定時刻</label>
+                <input type="time" id="edit-time" class="input-lg">
+            </div>
+            <div class="form-group">
+                <label>配車車両</label>
+                <select id="edit-vehicle-select" class="input-lg"></select>
+            </div>
+            <div class="form-actions">
+                <button id="btn-cancel-edit" class="btn-secondary">キャンセル</button>
+                <button id="btn-save-edit" class="btn-primary">保存</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="common.js"></script>

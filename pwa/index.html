@@ -41,7 +41,8 @@
         <div class="container center-content">
             <div class="brand">
                 <h1>送迎管理アプリ</h1>
-                <p>送迎記録を始めましょう <span id="app-version" style="font-size:0.8rem; color:var(--text-sub); opacity:0.7;"></span></p>
+                <p>送迎記録を始めましょう <span id="app-version"
+                        style="font-size:0.8rem; color:var(--text-sub); opacity:0.7;"></span></p>
             </div>
 
             <div class="card setup-card">
@@ -55,6 +56,12 @@
                     <div id="course-list" class="vehicle-grid">
                         <!-- Courses injected here -->
                     </div>
+                </div>
+
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <button id="btn-start-session" class="btn-primary" disabled style="width:100%; opacity:0.5;">
+                        送迎管理へ
+                    </button>
                 </div>
 
                 <div class="form-group" style="padding-top:1rem; border-top:1px solid #eee">
@@ -101,9 +108,9 @@
 
         <div class="tabs">
             <button class="tab active" data-filter="all">全て</button>
-            <button class="tab" data-filter="pickup">迎え</button>
-            <button class="tab" data-filter="dropoff">送り</button>
-            <button class="tab" data-filter="unfinished">未完了</button>
+            <button class="tab" data-filter="unboarded">未乗車</button>
+            <button class="tab" data-filter="undropped">未降車</button>
+            <button class="tab" data-filter="unfinished" style="display:none;">未完了</button>
         </div>
 
         <main class="content-scroll">

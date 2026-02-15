@@ -85,6 +85,11 @@ function createSampleData() {
     scheduleSheet.deleteRows(2, scheduleSheet.getLastRow() - 1);
   }
   
+  // Headers check/update
+  const scheduleHeaders = ['予定ID', '日付', '事業所ID', '利用者ID', '氏名', '便種別', '予定時刻', 'コースID', '車両ID', '車両名', 'ドライバー', '添乗員', 'ルート順'];
+  scheduleSheet.getRange(1, 1, 1, scheduleHeaders.length).setValues([scheduleHeaders]);
+  scheduleSheet.getRange(1, 1, 1, scheduleHeaders.length).setFontWeight('bold');
+  
   const schedules = [
     // ----------------------------------------------------
     // F001 - V001 (ハイエース1号) / Driver: SUZUKI
@@ -116,5 +121,13 @@ function createSampleData() {
   
   schedules.forEach(s => scheduleSheet.appendRow(s));
   
+  // Also fix Record Sheet headers just in case
+  let recordSheet = ss.getSheetByName('送迎記録');
+  if (recordSheet) {
+      const recordHeaders = ['記録ID', '予定ID', '日付', '事業所ID', '利用者ID', '氏名', '便種別', '予定時刻', '乗車時刻', '降車時刻', 'ステータス', 'コースID', 'ドライバー', '添乗員', '車両ID', '車両名', '備考'];
+      recordSheet.getRange(1, 1, 1, recordHeaders.length).setValues([recordHeaders]);
+      recordSheet.getRange(1, 1, 1, recordHeaders.length).setFontWeight('bold');
+  }
+
   console.log('サンプルデータを作成しました: ' + today);
 }
