@@ -10,16 +10,30 @@ const SyncManager = {
 
         UI.toast('同期中...');
         const queue = [...Store.data.pendingRecords];
+        const BATCH_SIZE = 10;
 
-        for (const record of queue) {
+        for (let i = 0; i < queue.length; i += BATCH_SIZE) {
+            const records = queue.slice(i, i + BATCH_SIZE);
+
             try {
-                await API.post('checkIn', record);
-                // Success: remove from queue
-                Store.data.pendingRecords = Store.data.pendingRecords.filter(r => r.timestamp !== record.timestamp);
+                const result = await API.post('checkInBatch', { records });
+                const failedScheduleIds = new Set((result.failedDetails || []).map(item => item.scheduleId));
+
+                if (failedScheduleIds.size === 0) {
+                    const successTimestamps = new Set(records.map(record => record.timestamp));
+                    Store.data.pendingRecords = Store.data.pendingRecords.filter(record => !successTimestamps.has(record.timestamp));
+                } else {
+                    Store.data.pendingRecords = Store.data.pendingRecords.filter(record => {
+                        if (!records.some(batchRecord => batchRecord.timestamp === record.timestamp)) {
+                            return true;
+                        }
+                        return failedScheduleIds.has(record.scheduleId);
+                    });
+                }
+
                 Store.save();
             } catch (e) {
-                console.error('Sync failed for record', record, e);
-                // Stop syncing on error if network issue
+                console.error('Batch sync failed', records, e);
                 if (!navigator.onLine) break;
             }
         }
