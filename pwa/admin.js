@@ -6,39 +6,76 @@ const DataManager = {
     async init() {
         Store.load();
 
-        if (navigator.onLine) {
-            try {
-                // Fetch basic data
-                // Fetch basic data
-                const facilities = await API.fetch('getFacilities');
-                Store.data.facilities = facilities;
+        // Show UI first with cached data for faster first paint
+        AdminManager.init();
+        AdminManager.open();
 
-                const courses = await API.fetch('getCourses'); // All courses
-                Store.data.courses = courses;
-
-                const vehicles = await API.fetch('getVehicles');
-                Store.data.vehicles = vehicles;
-
-                const users = await API.fetch('getUsers');
-                Store.data.users = users;
-
-                Store.save();
-
-                // AdminManager will handle rendering
-                AdminManager.init();
-                AdminManager.open();
-            } catch (e) {
-                console.warn('Init fetch failed', e);
-                UI.toast('データ取得エラー: ' + e.message);
-                // Still try to render offline data
-                AdminManager.init();
-                AdminManager.open();
-            }
-        } else {
+        if (!navigator.onLine) {
             UI.toast('オフラインモード: 最新データではない可能性があります');
-            AdminManager.init();
-            AdminManager.open();
+            return;
         }
+
+        // Start independent requests in parallel
+        const facilitiesPromise = API.fetch('getFacilities');
+        const coursesPromise = API.fetch('getCourses');
+        const vehiclesPromise = API.fetch('getVehicles');
+        const usersPromise = API.fetch('getUsers');
+
+        // Required data for initial dashboard context
+        const requiredResults = await Promise.allSettled([
+            facilitiesPromise,
+            coursesPromise
+        ]);
+
+        let hasRequiredUpdate = false;
+        const [facilitiesResult, coursesResult] = requiredResults;
+
+        if (facilitiesResult.status === 'fulfilled') {
+            Store.data.facilities = facilitiesResult.value;
+            hasRequiredUpdate = true;
+        } else {
+            console.warn('Init fetch failed: facilities', facilitiesResult.reason);
+        }
+
+        if (coursesResult.status === 'fulfilled') {
+            Store.data.courses = coursesResult.value;
+            hasRequiredUpdate = true;
+        } else {
+            console.warn('Init fetch failed: courses', coursesResult.reason);
+        }
+
+        if (hasRequiredUpdate) {
+            Store.save();
+            AdminManager.refreshData();
+        }
+
+        // Follow-up non-blocking data
+        Promise.allSettled([vehiclesPromise, usersPromise]).then(results => {
+            let updated = false;
+            const [vehiclesResult, usersResult] = results;
+
+            if (vehiclesResult.status === 'fulfilled') {
+                Store.data.vehicles = vehiclesResult.value;
+                updated = true;
+            } else {
+                console.warn('Init fetch failed: vehicles', vehiclesResult.reason);
+            }
+
+            if (usersResult.status === 'fulfilled') {
+                Store.data.users = usersResult.value;
+                updated = true;
+            } else {
+                console.warn('Init fetch failed: users', usersResult.reason);
+            }
+
+            if (updated) {
+                Store.save();
+                const activeTab = document.querySelector('.tab[data-admin-tab].active');
+                if (activeTab && activeTab.dataset.adminTab === 'master') {
+                    AdminManager.renderMasterTab();
+                }
+            }
+        });
     },
 
     async loadSchedule() {

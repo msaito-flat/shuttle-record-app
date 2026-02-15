@@ -46,40 +46,75 @@ const SyncManager = {
 const DataManager = {
     async init() {
         Store.load();
+
+        // Cached data first for faster first paint
         UI.renderFacilities();
+        UI.renderCourses();
 
-        if (navigator.onLine) {
-            try {
-                // Parallel Fetch for Performance
-                const [facilities, courses, vehicles, users] = await Promise.all([
-                    API.fetch('getFacilities'),
-                    API.fetch('getCourses'), // Fetch ALL courses
-                    API.fetch('getVehicles'),
-                    API.fetch('getUsers')
-                ]);
+        if (!navigator.onLine) {
+            return;
+        }
 
-                Store.data.facilities = facilities;
-                Store.data.courses = courses;
-                Store.data.vehicles = vehicles;
-                Store.data.users = users;
+        // Start independent requests in parallel
+        const facilitiesPromise = API.fetch('getFacilities');
+        const coursesPromise = API.fetch('getCourses');
+        const vehiclesPromise = API.fetch('getVehicles');
+        const usersPromise = API.fetch('getUsers');
 
-                Store.save();
+        // Required for setup screen (wait for these first)
+        const [facilitiesResult, coursesResult] = await Promise.allSettled([
+            facilitiesPromise,
+            coursesPromise
+        ]);
 
-                // Update UI
-                UI.renderFacilities();
-                UI.renderCourses();
-
-                // Pre-load templates if course selected
-                if (Store.status.currentCourse) {
-                    await this.getTemplates();
-                }
-
-            } catch (e) {
-                console.warn('Init fetch failed', e);
-            }
+        let hasNewData = false;
+        if (facilitiesResult.status === 'fulfilled') {
+            Store.data.facilities = facilitiesResult.value;
+            hasNewData = true;
         } else {
-            UI.renderFacilities();
-            UI.renderCourses();
+            console.warn('Init fetch failed: facilities', facilitiesResult.reason);
+        }
+
+        if (coursesResult.status === 'fulfilled') {
+            Store.data.courses = coursesResult.value;
+            hasNewData = true;
+        } else {
+            console.warn('Init fetch failed: courses', coursesResult.reason);
+        }
+
+        if (hasNewData) {
+            Store.save();
+        }
+
+        // Apply dependent rendering after required data is settled
+        UI.renderFacilities();
+        UI.renderCourses();
+
+        // Follow-up data (non-blocking for first paint)
+        Promise.allSettled([vehiclesPromise, usersPromise]).then(results => {
+            let updated = false;
+            const [vehiclesResult, usersResult] = results;
+
+            if (vehiclesResult.status === 'fulfilled') {
+                Store.data.vehicles = vehiclesResult.value;
+                updated = true;
+            } else {
+                console.warn('Init fetch failed: vehicles', vehiclesResult.reason);
+            }
+
+            if (usersResult.status === 'fulfilled') {
+                Store.data.users = usersResult.value;
+                updated = true;
+            } else {
+                console.warn('Init fetch failed: users', usersResult.reason);
+            }
+
+            if (updated) Store.save();
+        });
+
+        // Pre-load templates if course selected (follow-up)
+        if (Store.status.currentCourse) {
+            this.getTemplates();
         }
     },
 
