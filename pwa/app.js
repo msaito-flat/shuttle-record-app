@@ -351,10 +351,32 @@ const UI = {
                 // .status-skip (Gray/Dimmed)
             }
 
-            // Determine Icon
-            let actionIcon = 'radio_button_unchecked';
-            if (isRiding) actionIcon = 'directions_car'; // To Alight
-            if (isDone) actionIcon = 'check_circle'; // Done
+            // Determine Button
+            let btnHtml = '';
+            if (isCancel || isSkip) {
+                // If Cancelled/skipped, maybe show "Reset"? Or just status.
+                // For now, let's allow reset by clicking the status badge logic (which was memo).
+                // But the user wants buttons.
+                // Let's show a disabled "完了" or similar, or allow reset.
+                // User didn't specify. Let's keep it simple.
+                // If skipped/cancel, maybe show nothing or "復帰"?
+                btnHtml = `<button class="btn-action" style="background:#ccc; color:#666;" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">復帰</button>`;
+            } else if (!s.status) {
+                // Unboarded -> Show "乗車"
+                btnHtml = `<button class="btn-action btn-action-ride" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">乗車</button>`;
+            } else if (s.status === '乗車済') {
+                // Boarded -> Show "降車"
+                btnHtml = `<button class="btn-action btn-action-drop" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">降車</button>`;
+            } else if (s.status === '降車済') {
+                // Done -> Show "完了"
+                // User said "送迎完了".
+                // Clicking it again should probably reset or do nothing?
+                // toggleCheck logic cycles: Null -> Board -> Drop -> Null.
+                // So clicking "Complete" goes back to Null (Reset).
+                btnHtml = `<button class="btn-action btn-action-done" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">完了</button>`;
+            } else {
+                btnHtml = `<button class="btn-action" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">?</button>`;
+            }
 
             // Times display
             let timeDisplay = s.scheduledTime;
@@ -375,9 +397,7 @@ const UI = {
                     </div>
                 </div>
                 <div class="card-action">
-                    <button class="check-btn" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">
-                        <span class="material-icons-round">${actionIcon}</span>
-                    </button>
+                    ${btnHtml}
                     <button class="memo-btn" onclick="event.stopPropagation(); UI.openMemo('${s.scheduleId}')">
                         <span class="material-icons-round" style="font-size:20px">edit_note</span>
                     </button>
