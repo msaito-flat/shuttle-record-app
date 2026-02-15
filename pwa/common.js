@@ -3,7 +3,13 @@
 
 // CONFIGURATION
 const API_URL = 'https://script.google.com/macros/s/AKfycbwj5ZNC3gTMZzMsjFGatdOfFn6o7GOGSHPfImS1Dcj_BRDTKmunOzsNLTXVBWexMg/exec';
-const APP_VERSION = 'v1.0.19'; // Display Version
+const APP_VERSION = 'v1.0.20'; // Display Version
+
+function getTodayDateString() {
+    const now = new Date();
+    const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return localTime.toISOString().split('T')[0];
+}
 
 // STATE MANAGEMENT
 const Store = {
@@ -22,7 +28,7 @@ const Store = {
         currentVehicle: null,
         currentDriver: localStorage.getItem('ks_driver') || '',
         currentAttendant: localStorage.getItem('ks_attendant') || '',
-        currentDate: new Date().toISOString().split('T')[0],
+        currentDate: getTodayDateString(),
         isOffline: !navigator.onLine
     },
 
@@ -35,7 +41,10 @@ const Store = {
         const d = localStorage.getItem('ks_data');
         const s = localStorage.getItem('ks_status');
         if (d) this.data = JSON.parse(d);
-        if (s) this.status = JSON.parse(s);
+        if (s) this.status = { ...this.status, ...JSON.parse(s) };
+
+        // Always default to today's local date when the app is opened.
+        this.status.currentDate = getTodayDateString();
     }
 };
 
