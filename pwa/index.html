@@ -42,15 +42,23 @@
             <div class="brand">
                 <h1>送迎管理アプリ</h1>
                 <p>送迎記録を始めましょう <span id="app-version"
-                        style="font-size:0.8rem; color:var(--text-sub); opacity:0.7;"></span></p>
+                        style="font-size:0.8rem; color:var(--text-sub); opacity:1.0;"></span></p>
             </div>
 
             <div class="card setup-card">
+                <!-- 1. Date (Moved to Top) -->
+                <div class="form-group">
+                    <label>本日の日付</label>
+                    <input type="date" id="setup-date" class="input-lg">
+                </div>
+
+                <!-- 2. Facility -->
                 <div class="form-group">
                     <label>事業所</label>
                     <select id="setup-facility" class="input-lg"></select>
                 </div>
 
+                <!-- 3. Course -->
                 <div class="form-group">
                     <label>コースを選択</label>
                     <div id="course-list" class="vehicle-grid">
@@ -58,19 +66,14 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top:1.5rem;">
-                    <button id="btn-start-session" class="btn-primary" disabled style="width:100%; opacity:0.5;">
-                        送迎管理へ
-                    </button>
-                </div>
-
+                <!-- 4. Driver/Attendant (Updated Placeholders) -->
                 <div class="form-group" style="padding-top:1rem; border-top:1px solid #eee">
                     <label>ドライバー・添乗員 <span style="color:red; font-size:0.8em; margin-left:4px;">(必須)</span></label>
                     <div class="flex-row">
-                        <input type="text" id="setup-driver" class="input-lg" placeholder="ドライバー名">
+                        <input type="text" id="setup-driver" class="input-lg" placeholder="氏名 (フルネーム)">
                     </div>
                     <div class="flex-row" style="margin-top:0.5rem;">
-                        <input type="text" id="setup-attendant" class="input-lg" placeholder="添乗員名">
+                        <input type="text" id="setup-attendant" class="input-lg" placeholder="氏名 (フルネーム)">
                     </div>
                     <div style="margin-top:0.5rem; text-align:right;">
                         <label style="font-size:0.9rem; color:#666; display:inline-flex; align-items:center;">
@@ -79,19 +82,11 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>本日の日付</label>
-                    <input type="date" id="setup-date" class="input-lg">
-                </div>
-
-                <div
-                    style="margin-top: 2rem; border-top: 1px solid var(--gray-100); padding-top: 1rem; text-align: center;">
-                    <a href="admin.html" id="btn-go-admin" class="btn-text"
-                        style="text-decoration:none; display:inline-flex; align-items:center; color:var(--primary-color);">
-                        <span class="material-icons-round"
-                            style="vertical-align: middle; margin-right:4px;">admin_panel_settings</span>
-                        管理者画面
-                    </a>
+                <!-- 5. Start Button (Renamed & Moved to Bottom) -->
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <button id="btn-start-session" class="btn-primary" disabled style="width:100%; opacity:0.5;">
+                        送迎記録へ
+                    </button>
                 </div>
             </div>
         </div>
