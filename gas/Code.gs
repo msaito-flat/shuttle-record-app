@@ -93,6 +93,9 @@ function doPost(e) {
         setup();
         result = { message: 'Database initialized' };
         break;
+      case 'migrateTemplateDetailTo4Columns':
+        result = migrateTemplateDetailTo4Columns();
+        break;
       default:
         return jsonResponse({ error: 'Invalid action' });
     }
@@ -187,24 +190,22 @@ function createTemplate(data) {
   
   if (!items || items.length === 0) return { templateId, message: 'Template created (empty)' };
 
-  // Prepare rows: [テンプレートID, 到着順, 時間, 種別, 利用者ID] (Check columns in Setup.gs or sheet)
-  // Warning: Column order must match Setup.gs! 
-  // Setup.gs: ['テンプレートID', 'ルート順', '時間', '種別', '利用者ID']
+  // Prepare rows: [テンプレートID, 利用者ID, 便種別, デフォルト時刻]
+  // Warning: Column order must match Setup.gs.
   
-  const rows = items.map((item, index) => {
+  const rows = items.map((item) => {
     return [
       templateId,
-      item.routeOrder || (index + 1),
-      item.time || item.scheduledTime,
+      item.userId,
       item.type,
-      item.userId
+      item.time || item.scheduledTime || ''
     ];
   });
 
   if (rows.length > 0) {
     const lastRow = detailSheet.getLastRow();
-     // column 1 to 5
-    detailSheet.getRange(lastRow + 1, 1, rows.length, 5).setValues(rows);
+    // column 1 to 4
+    detailSheet.getRange(lastRow + 1, 1, rows.length, 4).setValues(rows);
   }
 
   return { templateId, message: 'Template created', count: rows.length };
@@ -250,6 +251,77 @@ function getTemplates(courseId) {
        }))
     };
   }).filter(t => t); // remove nulls
+}
+
+/**
+ * createTemplate -> getTemplates の往復で userId/type/time が欠損しないかを確認する
+ * 実行後は作成した検証データを削除する。
+ */
+function checkTemplateRoundTripCase() {
+  const marker = Utilities.formatDate(new Date(), 'JST', 'yyyyMMddHHmmss');
+  const course = SheetHelper.getData('コースマスタ')[0];
+  const user = SheetHelper.getData('利用者マスタ')[0];
+
+  if (!course || !user) {
+    throw new Error('検証に必要なコースまたは利用者データが不足しています');
+  }
+
+  const payload = {
+    courseId: course['コースID'],
+    templateName: 'RT_CHECK_' + marker,
+    items: [{
+      userId: user['利用者ID'],
+      type: '迎え',
+      time: '08:30'
+    }]
+  };
+
+  const created = createTemplate(payload);
+  const templateId = created.templateId;
+
+  try {
+    const templates = getTemplates(course['コースID']);
+    const target = templates.find(t => t.templateId === templateId);
+    if (!target) throw new Error('作成したテンプレートが取得できません');
+    if (!target.items || target.items.length !== 1) throw new Error('詳細件数が一致しません');
+
+    const item = target.items[0];
+    const expected = payload.items[0];
+    if (item.userId !== expected.userId || item.type !== expected.type || item.time !== expected.time) {
+      throw new Error('往復検証に失敗: ' + JSON.stringify({ expected, actual: item }));
+    }
+
+    return {
+      ok: true,
+      templateId,
+      expected,
+      actual: item
+    };
+  } finally {
+    cleanupTemplateById_(templateId);
+  }
+}
+
+function cleanupTemplateById_(templateId) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const templateSheet = ss.getSheetByName('予定テンプレート');
+  const detailSheet = ss.getSheetByName('テンプレート詳細');
+
+  deleteRowsByKey_(detailSheet, 1, templateId);
+  deleteRowsByKey_(templateSheet, 1, templateId);
+}
+
+function deleteRowsByKey_(sheet, keyColumnIndex, keyValue) {
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  if (lastRow <= 1) return;
+
+  const values = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+  for (let i = values.length - 1; i >= 0; i--) {
+    if (String(values[i][keyColumnIndex - 1]) === String(keyValue)) {
+      sheet.deleteRow(i + 2);
+    }
+  }
 }
 
 function getVehicles(facilityId) {

@@ -100,3 +100,54 @@ function ensureSheet(ss, sheetName, headers) {
   }
   return sheet;
 }
+
+
+/**
+ * テンプレート詳細シートの旧5列構成データを4列構成へ移行する。
+ * 旧構成: [テンプレートID, ルート順, 時間, 種別, 利用者ID]
+ * 新構成: [テンプレートID, 利用者ID, 便種別, デフォルト時刻]
+ *
+ * 既に5列目に利用者IDが入ってしまっている行を救済し、2-4列を正しい値へ再配置する。
+ */
+function migrateTemplateDetailTo4Columns() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('テンプレート詳細');
+  if (!sheet) throw new Error('シートが見つかりません: テンプレート詳細');
+
+  const expectedHeaders = ['テンプレートID', '利用者ID', '便種別', 'デフォルト時刻'];
+  sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, expectedHeaders.length).setFontWeight('bold');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return { migratedRows: 0, message: 'No data rows' };
+  }
+
+  const lastColumn = sheet.getLastColumn();
+  const values = sheet.getRange(2, 1, lastRow - 1, lastColumn).getValues();
+
+  let migratedRows = 0;
+  const normalized = values.map(row => {
+    const templateId = row[0] || '';
+    // 旧5列構成の場合は [1]=ルート順, [2]=時間, [3]=種別, [4]=利用者ID
+    const legacyUserId = row[4];
+    const legacyType = row[3];
+    const legacyTime = row[2];
+
+    const userId = legacyUserId || row[1] || '';
+    const type = legacyType || row[2] || '';
+    const time = legacyTime || row[3] || '';
+
+    if (legacyUserId || legacyType || legacyTime) migratedRows += 1;
+
+    return [templateId, userId, type, time];
+  });
+
+  sheet.getRange(2, 1, normalized.length, 4).setValues(normalized);
+  if (lastColumn > 4) {
+    sheet.getRange(1, 5, sheet.getMaxRows(), lastColumn - 4).clearContent();
+  }
+
+  return { migratedRows, totalRows: normalized.length };
+}
