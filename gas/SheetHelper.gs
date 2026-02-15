@@ -36,16 +36,46 @@ const SheetHelper = {
   insertData: function(sheetName, dataObj, idPrefix) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    
-    // ID生成 (簡易的: タイムスタンプ + ランダム)
-    const newId = idPrefix + Utilities.formatDate(new Date(), 'JST', 'yyyyMMddHHmmss') + Math.floor(Math.random() * 100);
-    if (!dataObj[headers[0]]) {
-      dataObj[headers[0]] = newId; // 最初のカラムをIDと仮定
+
+    const idColumnName = headers[0]; // 最初のカラムをIDと仮定
+
+    // 既存IDを高速に照合できるようSet化
+    const lastRow = sheet.getLastRow();
+    const existingIds = new Set();
+    if (lastRow >= 2) {
+      const idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      idValues.forEach(row => {
+        const id = row[0];
+        if (id !== '' && id !== null && id !== undefined) {
+          existingIds.add(String(id));
+        }
+      });
+    }
+
+    // ID生成: 既存プレフィックス + ミリ秒タイムスタンプ + UUID相当ランダム
+    // 形式例: U20260101123456789a1b2c3d4e5f64789ab0c123456789def
+    // NOTE: 大量同時登録がさらに増える場合は、PropertiesServiceでカウンタを管理する
+    // 方式も比較検討できる。
+    const generateId = function() {
+      const timestamp = Utilities.formatDate(new Date(), 'JST', 'yyyyMMddHHmmssSSS');
+      const randomPart = Utilities.getUuid().replace(/-/g, '');
+      return idPrefix + timestamp + randomPart;
+    };
+
+    let newId = dataObj[idColumnName] ? String(dataObj[idColumnName]) : generateId();
+
+    // 衝突時は再生成してガード
+    while (existingIds.has(newId)) {
+      newId = generateId();
+    }
+
+    if (!dataObj[idColumnName]) {
+      dataObj[idColumnName] = newId;
     }
     
     const row = headers.map(header => dataObj[header] || '');
     sheet.appendRow(row);
-    return newId;
+    return dataObj[idColumnName];
   },
 
   /**
