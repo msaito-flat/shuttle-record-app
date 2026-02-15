@@ -333,9 +333,6 @@ const UI = {
             return;
         }
 
-        // Check if current course is valid for this facility
-        // Also validation of inputs could be done here but let's do it on button click or change.
-
         if (Store.status.currentCourse) {
             const exists = courses.find(c => c['コースID'] === Store.status.currentCourse);
             if (!exists) {
@@ -355,9 +352,8 @@ const UI = {
             btn.onclick = () => {
                 Store.status.currentCourse = c['コースID'];
                 Store.save();
-                this.renderCourses(); // Re-render to show selection state
+                this.renderCourses();
                 DataManager.getTemplates();
-                // Enable button
                 document.getElementById('btn-start-session').disabled = false;
                 document.getElementById('btn-start-session').style.opacity = '1';
             };
@@ -368,7 +364,6 @@ const UI = {
     startSession() {
         if (!Store.status.currentCourse) return;
 
-        // Validation
         const driver = Store.status.currentDriver;
         const attendant = Store.status.currentAttendant;
 
@@ -383,187 +378,74 @@ const UI = {
 
         DataManager.loadSchedule();
 
-        // find course name for header
         const c = Store.data.courses.find(c => c['コースID'] === Store.status.currentCourse);
         const cName = c ? c['コース名'] : '';
 
         document.getElementById('header-subtitle').textContent = `${Store.status.currentDate} / ${cName}`;
 
-        // Navigation (Push state)
         history.pushState({ view: 'main' }, '', '#main');
         document.getElementById('view-setup').classList.add('hidden');
         document.getElementById('view-main').classList.remove('hidden');
     },
-    const vEl = document.getElementById('app-version');
-    if(vEl) vEl.textContent = `(${APP_VERSION})`;
-},
 
-    renderFacilities() {
-        const select = document.getElementById('setup-facility');
-        if (!select) return;
-        select.innerHTML = '';
-        Store.data.facilities.forEach(f => {
-            const opt = document.createElement('option');
-            opt.value = f['事業所ID'];
-            opt.textContent = f['事業所名'];
-            if (f['デフォルト'] && !Store.status.currentFacility) {
-                Store.status.currentFacility = f['事業所ID']; // Set default
+    renderSchedule(filterType = 'all') {
+        const list = document.getElementById('schedule-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        let schedules = Store.data.schedules || [];
+        const currentCourse = Store.status.currentCourse;
+
+        schedules = schedules.filter(s => s.courseId === currentCourse);
+
+        if (filterType === 'unboarded') {
+            schedules = schedules.filter(s => !s.status || s.status === '未乗車');
+        }
+        if (filterType === 'undropped') {
+            schedules = schedules.filter(s => s.status === '乗車済');
+        }
+
+        if (filterType === 'pickup') schedules = schedules.filter(s => s.type === '迎え');
+        if (filterType === 'dropoff') schedules = schedules.filter(s => s.type === '送り');
+
+        if (schedules.length === 0) {
+            document.getElementById('empty-state').classList.remove('hidden');
+            return;
+        }
+        document.getElementById('empty-state').classList.add('hidden');
+
+        schedules.forEach(s => {
+            const card = document.createElement('div');
+            const isRiding = s.status === '乗車済';
+            const isDone = s.status === '降車済';
+            const isSkip = s.status === '欠席';
+            const isCancel = s.status === 'キャンセル';
+
+            let statusClass = '';
+            if (isRiding) statusClass = 'status-riding';
+            if (isDone) statusClass = 'status-done';
+            if (isSkip) statusClass = 'status-skip';
+            if (isCancel) statusClass = 'status-cancel';
+
+            let btnHtml = '';
+            if (isCancel || isSkip) {
+                btnHtml = `<button class="btn-action" style="background:#ccc; color:#666;" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">復帰</button>`;
+            } else if (!s.status) {
+                btnHtml = `<button class="btn-action btn-action-ride" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">乗車</button>`;
+            } else if (s.status === '乗車済') {
+                btnHtml = `<button class="btn-action btn-action-drop" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">降車</button>`;
+            } else if (s.status === '降車済') {
+                btnHtml = `<button class="btn-action btn-action-done" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">完了</button>`;
+            } else {
+                btnHtml = `<button class="btn-action" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">?</button>`;
             }
-            if (f['事業所ID'] === Store.status.currentFacility) opt.selected = true;
-            select.appendChild(opt);
-        });
-    },
 
-        renderCourses() {
-    const container = document.getElementById('course-list');
-    if (!container) return;
-    container.innerHTML = '';
+            let timeDisplay = s.scheduledTime;
+            if (s.boardTime) timeDisplay += ` <span style="font-size:0.8em; color:var(--primary-color)">IN ${s.boardTime}</span>`;
+            if (s.alightTime) timeDisplay += ` <span style="font-size:0.8em; color:var(--success-color)">OUT ${s.alightTime}</span>`;
 
-    const facilityId = Store.status.currentFacility;
-    let courses = Store.data.courses || [];
-
-    if (facilityId) {
-        courses = courses.filter(c => c['事業所ID'] === facilityId);
-    }
-
-    if (courses.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-sub); text-align:center;">コースがありません。<br>管理者に確認してください。</p>';
-        return;
-    }
-
-    // Check if current course is valid for this facility
-    if (Store.status.currentCourse) {
-        const exists = courses.find(c => c['コースID'] === Store.status.currentCourse);
-        if (!exists) {
-            Store.status.currentCourse = null;
-            document.getElementById('btn-start-session').disabled = true;
-            document.getElementById('btn-start-session').style.opacity = '0.5';
-        } else {
-            document.getElementById('btn-start-session').disabled = false;
-            document.getElementById('btn-start-session').style.opacity = '1';
-        }
-    }
-
-    courses.forEach(c => {
-        const btn = document.createElement('div');
-        btn.className = `vehicle-btn ${c['コースID'] === Store.status.currentCourse ? 'selected' : ''}`;
-        btn.innerHTML = `${c['コース名']}`;
-        btn.onclick = () => {
-            Store.status.currentCourse = c['コースID'];
-            Store.save();
-            this.renderCourses(); // Re-render to show selection state
-            DataManager.getTemplates();
-            // Enable button
-            document.getElementById('btn-start-session').disabled = false;
-            document.getElementById('btn-start-session').style.opacity = '1';
-        };
-        container.appendChild(btn);
-    });
-},
-
-startSession() {
-    if (!Store.status.currentCourse) return;
-    DataManager.loadSchedule();
-
-    // find course name for header
-    const c = Store.data.courses.find(c => c['コースID'] === Store.status.currentCourse);
-    const cName = c ? c['コース名'] : '';
-
-    document.getElementById('header-subtitle').textContent = `${Store.status.currentDate} / ${cName}`;
-
-    // Navigation (Push state)
-    history.pushState({ view: 'main' }, '', '#main');
-    document.getElementById('view-setup').classList.add('hidden');
-    document.getElementById('view-main').classList.remove('hidden');
-},
-
-renderSchedule(filterType = 'all') {
-    const list = document.getElementById('schedule-list');
-    if (!list) return;
-    list.innerHTML = '';
-
-    let schedules = Store.data.schedules || [];
-    const currentCourse = Store.status.currentCourse;
-
-    schedules = schedules.filter(s => {
-        return s.courseId === currentCourse;
-    });
-
-    // Tab filter
-    // "Unboarded" (未乗車) => status is null, empty, or '未乗車'
-    if (filterType === 'unboarded') {
-        schedules = schedules.filter(s => !s.status || s.status === '未乗車');
-    }
-    // "Undropped" (未降車) => status is '乗車済' (Boarded but not Dropped)
-    if (filterType === 'undropped') {
-        schedules = schedules.filter(s => s.status === '乗車済');
-    }
-
-    // Old filters just in case (removed from UI but logic kept?)
-    if (filterType === 'pickup') schedules = schedules.filter(s => s.type === '迎え');
-    if (filterType === 'dropoff') schedules = schedules.filter(s => s.type === '送り');
-
-    if (schedules.length === 0) {
-        document.getElementById('empty-state').classList.remove('hidden');
-        return;
-    }
-    document.getElementById('empty-state').classList.add('hidden');
-
-    schedules.forEach(s => {
-        const card = document.createElement('div');
-        const isRiding = s.status === '乗車済';
-        const isDone = s.status === '降車済';
-        const isSkip = s.status === '欠席';
-        const isCancel = s.status === 'キャンセル';
-
-        // Note: s.status might be null/empty for 'Unboarded'
-
-        let statusClass = '';
-        if (isRiding) statusClass = 'status-riding';
-        if (isDone) statusClass = 'status-done';
-        if (isSkip) statusClass = 'status-skip'; // Css needs to handle this
-        if (isCancel) statusClass = 'status-cancel'; // Css needs to handle this
-
-        // Absence visual distinction
-        if (isSkip || isCancel) {
-            // Maybe dim the card or add specific border
-            // .status-skip (Gray/Dimmed)
-        }
-
-        // Determine Button
-        let btnHtml = '';
-        if (isCancel || isSkip) {
-            // If Cancelled/skipped, maybe show "Reset"? Or just status.
-            // For now, let's allow reset by clicking the status badge logic (which was memo).
-            // But the user wants buttons.
-            // Let's show a disabled "完了" or similar, or allow reset.
-            // User didn't specify. Let's keep it simple.
-            // If skipped/cancel, maybe show nothing or "復帰"?
-            btnHtml = `<button class="btn-action" style="background:#ccc; color:#666;" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">復帰</button>`;
-        } else if (!s.status) {
-            // Unboarded -> Show "乗車"
-            btnHtml = `<button class="btn-action btn-action-ride" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">乗車</button>`;
-        } else if (s.status === '乗車済') {
-            // Boarded -> Show "降車"
-            btnHtml = `<button class="btn-action btn-action-drop" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">降車</button>`;
-        } else if (s.status === '降車済') {
-            // Done -> Show "完了"
-            // User said "送迎完了".
-            // Clicking it again should probably reset or do nothing?
-            // toggleCheck logic cycles: Null -> Board -> Drop -> Null.
-            // So clicking "Complete" goes back to Null (Reset).
-            btnHtml = `<button class="btn-action btn-action-done" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">完了</button>`;
-        } else {
-            btnHtml = `<button class="btn-action" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">?</button>`;
-        }
-
-        // Times display
-        let timeDisplay = s.scheduledTime;
-        if (s.boardTime) timeDisplay += ` <span style="font-size:0.8em; color:var(--primary-color)">IN ${s.boardTime}</span>`;
-        if (s.alightTime) timeDisplay += ` <span style="font-size:0.8em; color:var(--success-color)">OUT ${s.alightTime}</span>`;
-
-        card.className = `schedule-card ${statusClass}`;
-        card.innerHTML = `
+            card.className = `schedule-card ${statusClass}`;
+            card.innerHTML = `
                 <div class="card-content" onclick="UI.openMemo('${s.scheduleId}')">
                     <div class="card-time">
                         <span class="material-icons-round" style="font-size:16px">${s.type === '迎え' ? 'directions_car' : 'home'}</span>
@@ -582,124 +464,111 @@ renderSchedule(filterType = 'all') {
                     </button>
                 </div>
             `;
-        list.appendChild(card);
-    });
-},
+            list.appendChild(card);
+        });
+    },
 
-toggleCheck(id) {
-    const s = Store.data.schedules.find(item => item.scheduleId === id);
-    if (!s) return;
+    toggleCheck(id) {
+        const s = Store.data.schedules.find(item => item.scheduleId === id);
+        if (!s) return;
 
-    // Toggle logic: Null -> '乗車済' -> '降車済' -> Null
-    let newStatus = null;
-    if (!s.status) newStatus = '乗車済';
-    else if (s.status === '乗車済') newStatus = '降車済';
-    else if (s.status === '降車済') newStatus = null; // Reset
-    else newStatus = null;
+        let newStatus = null;
+        if (!s.status) newStatus = '乗車済';
+        else if (s.status === '乗車済') newStatus = '降車済';
+        else if (s.status === '降車済') newStatus = null;
+        else newStatus = null;
 
-    this.updateStatus(id, newStatus);
-},
+        this.updateStatus(id, newStatus);
+    },
 
-updateStatus(id, status, note = null) {
-    // Optimistic Update
-    const s = Store.data.schedules.find(item => item.scheduleId === id);
-    if (s) {
-        s.status = status;
-        if (note !== null) s.note = note;
-        Store.save();
-        this.renderSchedule(); // Re-render list to update filters if needed
+    updateStatus(id, status, note = null) {
+        const s = Store.data.schedules.find(item => item.scheduleId === id);
+        if (s) {
+            s.status = status;
+            if (note !== null) s.note = note;
+            Store.save();
 
-        // If filter was active, re-render might remove the item (e.g. Unboarded -> Boarded)
-        // User might lose context.
-        // Ideally we keep it but animate out?
-        // For now, simple re-render.
-        // Check current filter
-        // this.renderSchedule(document.querySelector('.tab.active').dataset.filter);
-        // Actually `renderSchedule` above doesn't check tab state unless passed.
-        // Let's pass active tab filter.
-        const activeTab = document.querySelector('.tab.active');
-        const filter = activeTab ? activeTab.dataset.filter : 'all';
-        this.renderSchedule(filter);
+            const activeTab = document.querySelector('.tab.active');
+            const filter = activeTab ? activeTab.dataset.filter : 'all';
+            this.renderSchedule(filter);
 
-        // Queue sync
-        SyncManager.pushRecord({
-            scheduleId: id,
-            status: status,
-            note: s.note,
-            date: Store.status.currentDate,
-            facilityId: Store.status.currentFacility,
-            courseId: Store.status.currentCourse,
-            vehicleId: Store.status.currentVehicle,
-            driver: Store.status.currentDriver,
-            attendant: Store.status.currentAttendant
+            SyncManager.pushRecord({
+                scheduleId: id,
+                status: status,
+                note: s.note,
+                date: Store.status.currentDate,
+                facilityId: Store.status.currentFacility,
+                courseId: Store.status.currentCourse,
+                vehicleId: Store.status.currentVehicle,
+                driver: Store.status.currentDriver,
+                attendant: Store.status.currentAttendant
+            });
+
+            this.toast('記録されました');
+        }
+    },
+
+    openMemo(id) {
+        const s = Store.data.schedules.find(item => item.scheduleId === id);
+        if (!s) return;
+
+        document.getElementById('modal-user-name').textContent = s.userName;
+        document.getElementById('modal-note').value = s.note || '';
+
+        document.querySelectorAll('.status-btn').forEach(btn => {
+            btn.className = 'status-btn';
+            if (btn.dataset.status === s.status) btn.classList.add('selected');
+
+            btn.onclick = () => {
+                document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            };
         });
 
-        this.toast('記録されました');
-    }
-},
+        const saveBtn = document.getElementById('btn-save-memo');
+        saveBtn.onclick = () => {
+            const selectedBtn = document.querySelector('.status-btn.selected');
+            const newStatus = selectedBtn ? selectedBtn.dataset.status : s.status;
+            const newNote = document.getElementById('modal-note').value;
 
-openMemo(id) {
-    const s = Store.data.schedules.find(item => item.scheduleId === id);
-    if (!s) return;
-
-    document.getElementById('modal-user-name').textContent = s.userName;
-    document.getElementById('modal-note').value = s.note || '';
-
-    // Status buttons logic
-    document.querySelectorAll('.status-btn').forEach(btn => {
-        btn.className = 'status-btn'; // reset
-        if (btn.dataset.status === s.status) btn.classList.add('selected');
-
-        btn.onclick = () => {
-            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+            this.updateStatus(id, newStatus, newNote);
+            document.getElementById('modal-memo').classList.add('hidden');
         };
-    });
 
-    const saveBtn = document.getElementById('btn-save-memo');
-    saveBtn.onclick = () => {
-        const selectedBtn = document.querySelector('.status-btn.selected');
-        const newStatus = selectedBtn ? selectedBtn.dataset.status : s.status;
-        const newNote = document.getElementById('modal-note').value;
+        document.getElementById('modal-memo').classList.remove('hidden');
+    },
 
-        this.updateStatus(id, newStatus, newNote);
-        document.getElementById('modal-memo').classList.add('hidden');
-    };
+    showLoading(show) {
+        const el = document.getElementById('loading-overlay');
+        if (show) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+    },
 
-    document.getElementById('modal-memo').classList.remove('hidden');
-},
+    updateConnectionStatus() {
+        const el = document.getElementById('connection-status');
+        if (Store.status.isOffline) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+    },
 
-showLoading(show) {
-    const el = document.getElementById('loading-overlay');
-    if (show) el.classList.remove('hidden');
-    else el.classList.add('hidden');
-},
+    updateSyncStatus() {
+        const count = Store.data.pendingRecords.length;
+        const btn = document.getElementById('btn-sync');
+        if (count > 0) {
+            btn.style.color = 'var(--warning-color)';
+        } else {
+            btn.style.color = 'var(--text-main)';
+        }
+    },
 
-updateConnectionStatus() {
-    const el = document.getElementById('connection-status');
-    if (Store.status.isOffline) el.classList.remove('hidden');
-    else el.classList.add('hidden');
-},
-
-updateSyncStatus() {
-    const count = Store.data.pendingRecords.length;
-    const btn = document.getElementById('btn-sync');
-    if (count > 0) {
-        btn.style.color = 'var(--warning-color)';
-    } else {
-        btn.style.color = 'var(--text-main)';
+    toast(msg) {
+        const el = document.getElementById('toast');
+        document.getElementById('toast-message').textContent = msg;
+        el.classList.remove('hidden');
+        if (this.toastTimeout) clearTimeout(this.toastTimeout);
+        this.toastTimeout = setTimeout(() => {
+            el.classList.add('hidden');
+        }, 2000);
     }
-},
-
-toast(msg) {
-    const el = document.getElementById('toast');
-    document.getElementById('toast-message').textContent = msg;
-    el.classList.remove('hidden');
-    if (this.toastTimeout) clearTimeout(this.toastTimeout);
-    this.toastTimeout = setTimeout(() => {
-        el.classList.add('hidden');
-    }, 2000);
-}
 };
 
 // INITIALIZATION
