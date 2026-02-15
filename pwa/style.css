@@ -705,6 +705,80 @@ textarea {
     color: var(--text-sub);
 }
 
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+}
+
+#master-table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+.editor-table {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.94rem;
+}
+
+.editor-table th,
+.editor-table td {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--gray-200);
+    vertical-align: middle;
+    line-height: 1.4;
+    background: var(--bg-card);
+}
+
+.editor-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-sub);
+    background: #f8fafc;
+    white-space: nowrap;
+}
+
+.editor-table tr:hover td,
+.editor-table tr:focus-within td {
+    background: #f8fbff;
+}
+
+.editor-table td input,
+.editor-table td select {
+    width: 100%;
+    min-height: 2.25rem;
+    margin-top: 0;
+}
+
+.btn-icon {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: #fee2e2;
+    color: #b91c1c;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.btn-icon:hover,
+.btn-icon:focus-visible {
+    background: #fecaca;
+}
+
 .master-toolbar {
     display: flex;
     gap: 1rem;
@@ -826,4 +900,60 @@ textarea {
 
 .flex-row>* {
     flex: 1;
+}
+
+@media (max-width: 767px) {
+    .table-responsive {
+        border: none;
+        background: transparent;
+        overflow: visible;
+    }
+
+    .editor-table {
+        min-width: 100%;
+    }
+
+    .editor-table thead {
+        display: none;
+    }
+
+    .editor-table,
+    .editor-table tbody,
+    .editor-table tr,
+    .editor-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .editor-table tr {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        margin-bottom: 0.75rem;
+        padding: 0.4rem;
+        background: var(--bg-card);
+    }
+
+    .editor-table td {
+        border: none;
+        padding: 0.45rem 0.5rem;
+    }
+
+    .editor-table td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-sub);
+        margin-bottom: 0.2rem;
+        font-weight: 700;
+    }
+
+    .editor-table td[data-label="操作"] {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 0.2rem;
+    }
+
+    .editor-table td[data-label="操作"]::before {
+        margin-right: auto;
+    }
 }
