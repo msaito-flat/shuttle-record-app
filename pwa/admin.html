@@ -91,6 +91,21 @@
                             <button id="btn-add-row" class="btn-text admin-btn-quiet">+ 利用者追加</button>
                         </div>
 
+                        <div id="editor-summary" class="editor-summary"></div>
+
+                        <div class="editor-filter-bar">
+                            <select id="edit-filter-type" class="input-lg">
+                                <option value="">種別: すべて</option>
+                                <option value="迎え">迎えのみ</option>
+                                <option value="送り">送りのみ</option>
+                            </select>
+                            <input type="search" id="edit-filter-user" class="input-lg" placeholder="利用者名で検索">
+                            <label class="editor-filter-checkbox">
+                                <input type="checkbox" id="edit-filter-unassigned-vehicle">
+                                車両未設定のみ
+                            </label>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="editor-table">
                                 <thead>
@@ -137,6 +152,7 @@
                             <option value="course">コースマスタ</option>
                             <option value="facility">事業所マスタ</option>
                         </select>
+                        <input type="search" id="master-search-input" class="input-lg master-search-input" placeholder="表示中マスタを検索">
                         <button id="btn-master-add" class="btn-secondary admin-btn-inline">+ 新規追加</button>
                         <button id="btn-master-save" class="btn-primary admin-btn-inline admin-btn-primary-main">保存する</button>
                     </div>
