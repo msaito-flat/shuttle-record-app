@@ -418,6 +418,12 @@ select.input-lg {
     color: var(--primary-dark);
 }
 
+.action-helper-text {
+    font-size: 0.72rem;
+    color: var(--text-sub);
+    text-align: right;
+}
+
 .check-btn {
     width: 48px;
     height: 48px;

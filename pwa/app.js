@@ -430,10 +430,12 @@ const UI = {
             let currentStep = '未乗車';
             let nextAction = '乗車';
             let btnHtml = '';
+            let helperTextHtml = '';
             if (isCancel || isSkip) {
                 currentStep = s.status;
-                nextAction = '復帰';
-                btnHtml = `<button class="btn-action btn-action-neutral" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')"><span class="material-icons-round">undo</span>復帰</button>`;
+                nextAction = 'メモで変更';
+                btnHtml = `<button class="btn-action btn-action-neutral" disabled><span class="material-icons-round">block</span>一覧から変更不可</button>`;
+                helperTextHtml = `<div class="action-helper-text">状態変更はメモ画面で実行してください</div>`;
             } else if (!s.status || s.status === '未乗車') {
                 currentStep = '未乗車';
                 nextAction = '乗車';
@@ -444,12 +446,14 @@ const UI = {
                 btnHtml = `<button class="btn-action btn-action-drop" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')"><span class="material-icons-round">south</span>降車</button>`;
             } else if (s.status === '降車済') {
                 currentStep = '降車済';
-                nextAction = '完了';
+                nextAction = '操作不要';
                 btnHtml = `<button class="btn-action btn-action-done" disabled><span class="material-icons-round">check_circle</span>完了済み</button>`;
+                helperTextHtml = `<div class="action-helper-text">完了済み（再操作不要）</div>`;
             } else {
                 currentStep = s.status || '未設定';
-                nextAction = '確認';
-                btnHtml = `<button class="btn-action btn-action-neutral" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')"><span class="material-icons-round">help</span>確認</button>`;
+                nextAction = 'メモで確認';
+                btnHtml = `<button class="btn-action btn-action-neutral" disabled><span class="material-icons-round">help</span>一覧から変更不可</button>`;
+                helperTextHtml = `<div class="action-helper-text">必要な場合はメモ画面から状態を変更してください</div>`;
             }
 
             let timeDisplay = s.scheduledTime;
@@ -475,6 +479,7 @@ const UI = {
                         <span class="step-chip step-chip-next">次: ${nextAction}</span>
                     </div>
                     ${btnHtml}
+                    ${helperTextHtml}
                     <button class="memo-btn" onclick="event.stopPropagation(); UI.openMemo('${s.scheduleId}')">
                         <span class="material-icons-round" style="font-size:20px">edit_note</span>
                     </button>
@@ -489,10 +494,10 @@ const UI = {
         if (!s) return;
 
         let newStatus = null;
-        if (!s.status) newStatus = '乗車済';
+        if (!s.status || s.status === '未乗車') newStatus = '乗車済';
         else if (s.status === '乗車済') newStatus = '降車済';
-        else if (s.status === '降車済') newStatus = null;
-        else newStatus = null;
+        else if (s.status === '降車済') return;
+        else return;
 
         this.updateStatus(id, newStatus);
     },
