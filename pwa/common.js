@@ -64,7 +64,13 @@ const API = {
     async post(action, data) {
         if (Store.status.isOffline) throw new Error('Offline');
 
-        const response = await fetch(API_URL, {
+        // GAS deployment differences:
+        // - newer backend reads `action` from JSON body
+        // - older backend reads `action` from query parameter
+        // Send both to avoid "Invalid action" on master save operations.
+        const postUrl = `${API_URL}?${new URLSearchParams({ action }).toString()}`;
+
+        const response = await fetch(postUrl, {
             method: 'POST',
             body: JSON.stringify({ action, ...data }),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
