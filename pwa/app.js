@@ -429,13 +429,16 @@ const UI = {
 
             let btnHtml = '';
             if (isCancel || isSkip) {
-                btnHtml = `<button class="btn-action" style="background:#ccc; color:#666;" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">復帰</button>`;
-            } else if (!s.status) {
+                btnHtml = '<span class="btn-action" style="background:#e0e0e0; color:#666; cursor:not-allowed; pointer-events:none;">メモで変更</span>';
+            } else if (!s.status || s.status === '未乗車') {
                 btnHtml = `<button class="btn-action btn-action-ride" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">乗車</button>`;
             } else if (s.status === '乗車済') {
                 btnHtml = `<button class="btn-action btn-action-drop" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">降車</button>`;
             } else if (s.status === '降車済') {
-                btnHtml = `<button class="btn-action btn-action-done" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">完了</button>`;
+                btnHtml = `
+                    <button class="btn-action btn-action-done" disabled>完了</button>
+                    <div style="font-size:0.75rem; color:var(--text-sub); margin-top:4px; text-align:center;">完了済み（再操作不要）</div>
+                `;
             } else {
                 btnHtml = `<button class="btn-action" onclick="event.stopPropagation(); UI.toggleCheck('${s.scheduleId}')">?</button>`;
             }
@@ -473,10 +476,13 @@ const UI = {
         if (!s) return;
 
         let newStatus = null;
-        if (!s.status) newStatus = '乗車済';
-        else if (s.status === '乗車済') newStatus = '降車済';
-        else if (s.status === '降車済') newStatus = null;
-        else newStatus = null;
+        if (!s.status || s.status === '未乗車') {
+            newStatus = '乗車済';
+        } else if (s.status === '乗車済') {
+            newStatus = '降車済';
+        } else {
+            return;
+        }
 
         this.updateStatus(id, newStatus);
     },
