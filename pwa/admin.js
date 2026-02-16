@@ -437,6 +437,7 @@ const AdminManager = {
 
         if (data.length === 0) {
             const tr = document.createElement('tr');
+            tr.dataset.placeholder = 'true';
             const td = document.createElement('td');
             td.colSpan = def.fields.length + 1;
             td.className = 'text-center';
@@ -556,16 +557,39 @@ const AdminManager = {
         if (!def) return;
 
         const tbody = document.getElementById('master-tbody');
-        const rows = tbody.querySelectorAll('tr');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        const editableFields = def.fields.filter(field => !field.readonly);
+        const hasMainInput = (item) => {
+            return editableFields.some(field => {
+                const value = item[field.key];
+
+                if (field.type === 'checkbox') {
+                    return value === true;
+                }
+
+                if (field.type === 'select') {
+                    return value !== undefined && value !== null && String(value).trim() !== '';
+                }
+
+                if (value === undefined || value === null) return false;
+                return String(value).trim() !== '';
+            });
+        };
 
         const items = [];
         rows.forEach(tr => {
+            if (tr.dataset.placeholder === 'true') return;
+
+            const inputs = tr.querySelectorAll('input, select');
+            if (inputs.length === 0) return;
+
             const item = {};
             // ID
             if (tr.dataset.id) item[def.idField] = tr.dataset.id;
 
             // Inputs
-            tr.querySelectorAll('input, select').forEach(input => {
+            inputs.forEach(input => {
                 const key = input.dataset.key;
                 if (!key) return;
 
@@ -576,9 +600,20 @@ const AdminManager = {
                 }
             });
 
+            const isNewRow = !item[def.idField];
+            if (isNewRow && !hasMainInput(item)) {
+                return;
+            }
+
             // Add to list
             items.push(item);
         });
+
+        const hasInvalidItem = items.some(item => !item[def.idField] && !hasMainInput(item));
+        if (hasInvalidItem) {
+            alert('ID未設定かつ主要入力のない行が含まれているため保存できません。入力内容を確認してください。');
+            return;
+        }
 
         if (!confirm('マスタデータを保存しますか？')) return;
 
