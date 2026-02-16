@@ -35,7 +35,15 @@
 6.  **運用時の反映ルール（重要）**
     - コード更新時は **`新しいデプロイ` を作らず**、`デプロイ` > `デプロイを管理` から **既存のWebアプリデプロイを編集して更新** してください。
     - これにより、運用中のURL（`/macros/s/<deployment-id>/exec`）を変えずに最新版コードを反映できます。
-    - URLを差し替える運用にすると、PWA側設定との不整合で `Invalid action` などの不具合切り分けが難しくなるため、**固定URL運用** を標準とします。
+    - URLを差し替える運用にすると、PWA側設定との不整合で管理画面操作がブロックされるなどの不具合切り分けが難しくなるため、**固定URL運用** を標準とします。
+
+
+7.  **PWAの `API_URL` とデプロイ版の対応確認（`getApiInfo`）**
+    - `pwa/common.js` の `API_URL` が、手順5〜6で更新した **同一WebアプリURL** を向いていることを確認します。
+    - ブラウザで以下URLを開き、`success: true` と `data.supportedActions` を確認します。  
+      `https://script.google.com/macros/s/<deployment-id>/exec?action=getApiInfo`
+    - `supportedActions` に最低限 `updateMasterData` / `bulkUpdateSchedules` / `createTemplate` が含まれていれば、管理画面の必須操作に対応した版です。
+    - これらが含まれない場合は、GAS側を再デプロイ（既存デプロイを編集して更新）するか、PWA側 `API_URL` の設定先を見直してください。
 
 ## 2. PWA (フロントエンド) の準備
 

@@ -8,6 +8,9 @@ function doGet(e) {
   try {
     let result;
     switch (action) {
+      case 'getApiInfo':
+        result = getApiInfo();
+        break;
       case 'getFacilities':
         result = getFacilities();
         break;
@@ -37,6 +40,32 @@ function doGet(e) {
   } catch (err) {
     return jsonResponse({ success: false, error: err.toString() });
   }
+}
+
+function getApiInfo() {
+  return {
+    version: 'v1.0.21',
+    supportedActions: [
+      'getApiInfo',
+      'getFacilities',
+      'getCourses',
+      'getTemplates',
+      'getVehicles',
+      'getSchedule',
+      'getRecords',
+      'getUsers',
+      'checkIn',
+      'checkInBatch',
+      'registerSchedule',
+      'updateSchedule',
+      'deleteSchedule',
+      'bulkUpdateSchedules',
+      'updateMasterData',
+      'createTemplate',
+      'setup',
+      'migrateTemplateDetailTo4Columns'
+    ]
+  };
 }
 
 function doPost(e) {
