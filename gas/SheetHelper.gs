@@ -52,21 +52,42 @@ const SheetHelper = {
       });
     }
 
-    // ID生成: 既存プレフィックス + ミリ秒タイムスタンプ + UUID相当ランダム
-    // 形式例: U20260101123456789a1b2c3d4e5f64789ab0c123456789def
-    // NOTE: 大量同時登録がさらに増える場合は、PropertiesServiceでカウンタを管理する
-    // 方式も比較検討できる。
-    const generateId = function() {
-      const timestamp = Utilities.formatDate(new Date(), 'JST', 'yyyyMMddHHmmssSSS');
-      const randomPart = Utilities.getUuid().replace(/-/g, '');
-      return idPrefix + timestamp + randomPart;
+    // 既存IDから `idPrefix + 数値` のみ抽出して次番を採番
+    // 例: U001, U002 ... / 既存の長いIDは無視して互換維持
+    const escapedPrefix = String(idPrefix).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const idPattern = new RegExp('^' + escapedPrefix + '(\\d+)$');
+    let maxNumber = 0;
+    let maxDigits = 3;
+
+    existingIds.forEach(id => {
+      const match = String(id).match(idPattern);
+      if (!match) return;
+
+      const numStr = match[1];
+      const num = parseInt(numStr, 10);
+      if (!isNaN(num)) {
+        if (num > maxNumber) {
+          maxNumber = num;
+        }
+        if (numStr.length > maxDigits) {
+          maxDigits = numStr.length;
+        }
+      }
+    });
+
+    const digitLength = Math.max(3, Math.min(4, Math.max(maxDigits, String(maxNumber + 1).length)));
+
+    const generateId = function(startNumber) {
+      return idPrefix + String(startNumber).padStart(digitLength, '0');
     };
 
-    let newId = dataObj[idColumnName] ? String(dataObj[idColumnName]) : generateId();
+    let nextNumber = maxNumber + 1;
+    let newId = dataObj[idColumnName] ? String(dataObj[idColumnName]) : generateId(nextNumber);
 
-    // 衝突時は再生成してガード
+    // 衝突時は再採番してガード
     while (existingIds.has(newId)) {
-      newId = generateId();
+      nextNumber += 1;
+      newId = generateId(nextNumber);
     }
 
     if (!dataObj[idColumnName]) {
