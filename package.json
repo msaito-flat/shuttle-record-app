@@ -6,7 +6,7 @@
   "scripts": {
     "login": "clasp login",
     "push": "clasp push",
-    "deploy": "clasp deploy --deploymentId AKfycbwj5ZNC3gTMZzMsjFGatdOfFn6o7GOGSHPfImS1Dcj_BRDTKmunOzsNLTXVBWexMg",
+    "deploy": "clasp deploy --deploymentId AKfycbxoV0Q2QgwRSiwq0_dmh572KVEfoXN52iQuk-DFL2GRuypyZt5WQzxJgS1eBOADAwaj",
     "deploy:new": "clasp deploy",
     "open": "clasp open",
     "release": "node scripts/release.js"
