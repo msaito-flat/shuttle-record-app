@@ -3,7 +3,24 @@
 
 // CONFIGURATION
 const API_URL = 'https://script.google.com/macros/s/AKfycbzsObRAaz7aKZ-6rD6GF9wMOCtJcVWFaqaCMWkSfiQ/exec';
-const APP_VERSION = 'v1.0.20'; // Display Version
+const APP_VERSION = 'v1.0.21'; // Display Version
+
+const ADMIN_REQUIRED_ACTIONS = [
+    'updateMasterData',
+    'bulkUpdateSchedules',
+    'createTemplate'
+];
+
+function getApiVersionErrorMessage() {
+    return '接続先APIが旧版です。GASの再デプロイまたはURL設定を確認してください';
+}
+
+function toUserFriendlyApiError(rawError) {
+    if (rawError === 'Invalid action') {
+        return getApiVersionErrorMessage();
+    }
+    return rawError;
+}
 
 function getTodayDateString() {
     const now = new Date();
@@ -57,7 +74,7 @@ const API = {
         const response = await fetch(`${API_URL}?${query}`);
         const json = await response.json();
 
-        if (!json.success) throw new Error(json.error || 'API Error');
+        if (!json.success) throw new Error(toUserFriendlyApiError(json.error || 'API Error'));
         return json.data;
     },
 
@@ -77,7 +94,23 @@ const API = {
         });
         const json = await response.json();
 
-        if (!json.success) throw new Error(json.error || 'API Error');
+        if (!json.success) throw new Error(toUserFriendlyApiError(json.error || 'API Error'));
         return json.data;
+    },
+
+    async getApiInfo() {
+        return this.fetch('getApiInfo');
+    },
+
+    async ensureAdminCompatibility() {
+        const apiInfo = await this.getApiInfo();
+        const supportedActions = Array.isArray(apiInfo && apiInfo.supportedActions) ? apiInfo.supportedActions : [];
+        const hasRequiredActions = ADMIN_REQUIRED_ACTIONS.every((action) => supportedActions.includes(action));
+
+        if (!hasRequiredActions) {
+            throw new Error(getApiVersionErrorMessage());
+        }
+
+        return apiInfo;
     }
 };

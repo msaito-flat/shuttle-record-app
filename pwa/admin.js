@@ -17,6 +17,15 @@ const DataManager = {
             return;
         }
 
+        try {
+            await API.ensureAdminCompatibility();
+            AdminManager.setActionBlocked(false);
+        } catch (e) {
+            console.warn('Admin compatibility check failed', e);
+            AdminManager.setActionBlocked(true, e.message || getApiVersionErrorMessage());
+            return;
+        }
+
         // Start independent requests in parallel
         const facilitiesPromise = API.fetch('getFacilities');
         const coursesPromise = API.fetch('getCourses');
@@ -129,6 +138,8 @@ const UI = {
 // ADMIN MANAGER
 const AdminManager = {
     networkListenersBound: false,
+    isActionBlocked: false,
+    actionBlockedReason: '',
     editFilters: {
         type: '',
         userQuery: '',
@@ -137,6 +148,25 @@ const AdminManager = {
     masterSearchQuery: '',
     draftSchedules: [],
     originalDraftSnapshot: [],
+
+    setActionBlocked(blocked, reason = '') {
+        this.isActionBlocked = blocked;
+        this.actionBlockedReason = reason;
+
+        document.querySelectorAll('.tab[data-admin-tab], .admin-tab-content button, .admin-tab-content input, .admin-tab-content select, .admin-tab-content textarea').forEach((el) => {
+            el.disabled = blocked;
+        });
+
+        if (blocked && reason) {
+            UI.toast(reason);
+        }
+    },
+
+    guardAdminAction() {
+        if (!this.isActionBlocked) return false;
+        UI.toast(this.actionBlockedReason || getApiVersionErrorMessage());
+        return true;
+    },
 
     init() {
         this.bindNetworkListeners();
@@ -519,6 +549,8 @@ const AdminManager = {
     },
 
     async saveMaster() {
+        if (this.guardAdminAction()) return;
+
         const type = document.getElementById('master-type-select').value;
         const def = this.masterDefs[type];
         if (!def) return;
@@ -567,6 +599,8 @@ const AdminManager = {
     },
 
     async saveAsTemplate() {
+        if (this.guardAdminAction()) return;
+
         if (!this.currentEditCourseId) {
             alert('コースが選択されていません');
             return;
@@ -1100,6 +1134,8 @@ const AdminManager = {
         },
 
     async saveBulk() {
+        if (this.guardAdminAction()) return;
+
             if (!this.currentEditCourseId) return;
 
             const validation = this.getDraftValidation();
