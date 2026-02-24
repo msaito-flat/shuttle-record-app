@@ -669,13 +669,15 @@ textarea {
 }
 
 .template-import-controls {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.5rem;
+    align-items: center;
     margin-top: 0.5rem;
 }
 
 .template-import-select {
-    flex: 1;
+    min-width: 0;
 }
 
 .editor-toolbar {
@@ -863,6 +865,7 @@ textarea {
     width: auto;
     margin-top: 0;
     padding: 0.75rem 1rem;
+    white-space: nowrap;
 }
 
 .admin-btn-block {
@@ -940,13 +943,20 @@ textarea {
 .btn-secondary {
     width: 100%;
     padding: 1rem;
-    background: var(--gray-100);
+    background: var(--bg-card);
     color: var(--text-main);
-    border: none;
+    border: 1px solid var(--gray-200);
     border-radius: 8px;
     font-weight: 700;
     margin-top: 0.5rem;
     cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus-visible {
+    background: #f8fafc;
+    border-color: #cbd5e1;
 }
 
 .flex-row {
@@ -960,6 +970,14 @@ textarea {
 }
 
 @media (max-width: 767px) {
+    .template-import-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-btn-inline {
+        width: 100%;
+    }
+
     .table-responsive {
         border: none;
         background: transparent;
