@@ -63,7 +63,9 @@ function getApiInfo() {
       'updateMasterData',
       'createTemplate',
       'setup',
-      'migrateTemplateDetailTo4Columns'
+      'migrateTemplateDetailTo4Columns',
+      'migrateCourseIdsToSequentialCFormat',
+      'rollbackCourseIdMigration'
     ]
   };
 }
@@ -124,6 +126,12 @@ function doPost(e) {
         break;
       case 'migrateTemplateDetailTo4Columns':
         result = migrateTemplateDetailTo4Columns();
+        break;
+      case 'migrateCourseIdsToSequentialCFormat':
+        result = migrateCourseIdsToSequentialCFormat();
+        break;
+      case 'rollbackCourseIdMigration':
+        result = rollbackCourseIdMigration(data.runId || e.parameter.runId);
         break;
       default:
         return jsonResponse({ error: 'Invalid action' });
