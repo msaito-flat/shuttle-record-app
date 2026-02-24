@@ -343,12 +343,12 @@ const AdminManager = {
             label: '利用者マスタ',
             idField: '利用者ID',
             fields: [
-                { key: '利用者ID', label: 'ID', readonly: true, width: '80px' },
-                { key: '氏名', label: '氏名', type: 'text' },
-                { key: 'フリガナ', label: 'フリガナ', type: 'text' },
-                { key: '住所', label: '住所', type: 'text' },
-                { key: '事業所ID', label: '事業所', type: 'select', source: 'facilities', valueKey: '事業所ID', labelKey: '事業所名' },
-                { key: '備考', label: '備考', type: 'text' },
+                { key: '利用者ID', label: 'ID', readonly: true, width: '110px' },
+                { key: '氏名', label: '氏名', type: 'text', width: '150px' },
+                { key: 'フリガナ', label: 'フリガナ', type: 'text', width: '170px' },
+                { key: '住所', label: '住所', type: 'text', width: '280px' },
+                { key: '事業所ID', label: '事業所', type: 'select', source: 'facilities', valueKey: '事業所ID', labelKey: '事業所名', width: '150px' },
+                { key: '備考', label: '備考', type: 'text', width: '220px' },
                 { key: '有効', label: '有効', type: 'checkbox' }
             ]
         },
@@ -408,7 +408,7 @@ const AdminManager = {
         }
 
         const table = document.createElement('table');
-        table.className = 'editor-table';
+        table.className = 'editor-table editor-table-master';
 
         // Header
         const thead = document.createElement('thead');
@@ -416,7 +416,11 @@ const AdminManager = {
         def.fields.forEach(f => {
             const th = document.createElement('th');
             th.textContent = f.label;
-            if (f.width) th.style.width = f.width;
+            if (f.width) {
+                th.style.width = f.width;
+                th.style.minWidth = f.width;
+            }
+            if (f.key === def.idField) th.classList.add('editor-cell-id');
             trHead.appendChild(th);
         });
         // Action col
@@ -465,6 +469,8 @@ const AdminManager = {
         def.fields.forEach(f => {
             const td = document.createElement('td');
             td.dataset.label = f.label;
+            if (f.width) td.style.minWidth = f.width;
+            if (f.key === def.idField) td.classList.add('editor-cell-id');
             const val = item[f.key];
 
             if (f.readonly) {
