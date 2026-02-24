@@ -176,21 +176,26 @@ function updateMasterData(data) {
 
   const results = [];
   items.forEach(item => {
-    if (item[idColumn]) {
-      // Update
+    const hasId = item[idColumn] !== undefined && item[idColumn] !== null && String(item[idColumn]).trim() !== '';
+
+    if (hasId) {
+      // Update only: ID がある場合は既存レコード更新のみ許可（新規作成への流用は禁止）
       const success = SheetHelper.updateData(sheetName, idColumn, item[idColumn], item);
       if (success) {
         results.push({ status: 'updated', id: item[idColumn] });
       } else {
-         // ID exists in payload but not found in sheet -> Treat as new or error?
-         // Let's treat as error for safety.
-         results.push({ status: 'error', message: 'ID not found', id: item[idColumn] });
+        results.push({ status: 'error', message: 'ID not found', id: item[idColumn] });
       }
-    } else {
-      // Create New
-      const newId = SheetHelper.insertData(sheetName, item, idPrefix);
-      results.push({ status: 'created', id: newId });
+      return;
     }
+
+    // Create New
+    // コース新規作成は必ず SheetHelper.insertData(..., 'C') による連番採番を使用する。
+    if (type === 'course') {
+      delete item[idColumn];
+    }
+    const newId = SheetHelper.insertData(sheetName, item, idPrefix);
+    results.push({ status: 'created', id: newId });
   });
 
   return results;
@@ -679,7 +684,7 @@ function buildNewRecordRow_(recordHeaders, recordColMap, scheduleRow, scheduleCo
   const row = new Array(recordHeaders.length).fill('');
   const status = item.status;
 
-  row[recordColMap['記録ID']] = generateRowId_('R');
+  row[recordColMap['記録ID']] = generateRecordId_('R');
   row[recordColMap['予定ID']] = item.scheduleId;
   row[recordColMap['日付']] = item.date || scheduleRow[scheduleColMap['日付']];
   row[recordColMap['事業所ID']] = item.facilityId || scheduleRow[scheduleColMap['事業所ID']];
@@ -729,8 +734,16 @@ function writeUpdatedRowsByChunk_(sheet, columnCount, rowMap) {
   sheet.getRange(chunkStart, 1, chunkRows.length, columnCount).setValues(chunkRows);
 }
 
+/**
+ * @deprecated 旧ID採番方式（prefix + yyyyMMddHHmmss + random）は廃止。
+ *             新規利用は禁止。必要な場合は用途別の採番関数を利用すること。
+ */
 function generateRowId_(prefix) {
-  return prefix + Utilities.formatDate(new Date(), 'JST', 'yyyyMMddHHmmss') + Math.floor(Math.random() * 100);
+  throw new Error('generateRowId_ is deprecated. Use SheetHelper.insertData or purpose-specific generator.');
+}
+
+function generateRecordId_(prefix) {
+  return prefix + Utilities.getUuid().replace(/-/g, '').slice(0, 12).toUpperCase();
 }
 
 function getUsers(facilityId) {
